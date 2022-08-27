@@ -5,11 +5,11 @@ A pure Julia implementation of denoising diffusion probabilistic models as popul
 ### Basic overview 
 
 
-<figure float="left">
+<p float="left">
   <img src="images/numbers_reverse.gif" width="45%" style="padding:5px"/>
   <img src="images/numbers_estimate.gif" width="45%"  style="padding:5px"/> 
   <p style="text-align:center">Reverse process (left) and final image estimate (right). These coincide on the final time step.</p>
-</figure>
+</p>
 
 Denoising diffusion starts from an image of pure noise and gradually removes this noise across many time steps, resulting in a natural looking image.
 At each time step a model predicts the noise to be removed in order to reach the final image on the final time step from the current time step.
