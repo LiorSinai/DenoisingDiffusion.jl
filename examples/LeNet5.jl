@@ -5,7 +5,7 @@ layers:     8
 parameters: 44,426
 size:       174.867 KiB
 source:     https://github.com/FluxML/model-zoo/blob/master/vision/conv_mnist/conv_mnist.jl
-
+            https://d2l.ai/chapter_convolutional-neural-networks/lenet.html 
 =#
 
 function LeNet5(; imgsize=(28, 28, 1), nclasses=10) 

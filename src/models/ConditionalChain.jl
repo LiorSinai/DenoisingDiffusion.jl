@@ -72,7 +72,7 @@ end
 Flux.@functor ConditionalSkipConnection
   
 function (skip::ConditionalSkipConnection)(x, y)
-skip.connection(skip.layers(x, y), x)
+    skip.connection(skip.layers(x, y), x)
 end
 
 function Base.show(io::IO, b::ConditionalSkipConnection)

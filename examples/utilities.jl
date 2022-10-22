@@ -37,6 +37,8 @@ function img_WHC_to_rgb(img_WHC::AbstractArray{T,N}) where {T,N}
     img
 end
 
+### evaluation functions
+
 """
     argmin_func(f, df, ddf, tmin, tmax; num_iters=10, length=100)
 
@@ -52,7 +54,7 @@ end
     newtons_method(f, fgrad, root, rmin, rmax; num_iters=10)
 
 Uses Newton's method to find the root for the equation `f(root)=0`. 
-If a function has multiple roots a good initial `root` is required to get an answer in the desired region,
+If a function has multiple roots a good initial `root` is required to get an answer in the desired region.
 """
 function newtons_method(f, fgrad, root::AbstractFloat, rmin::AbstractFloat, rmax::AbstractFloat; num_iters::Int=10)
     for i in 1:num_iters
