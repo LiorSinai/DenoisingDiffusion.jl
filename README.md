@@ -86,6 +86,8 @@ Optionally, tests can be run with:
 (@v1.x) pkg> test DenoisingDiffusion
 ```
 
+This repository uses FastAi's [nbdev](https://nbdev.fast.ai/tutorials/git_friendly_jupyter.html) to manage the Jupyter Notebooks for Git. This requires a Python installation of nbdev. To avoid using it, follow the steps in .gitconfig.
+
 ## Task list
 
 - [x] Self-attention blocks.
