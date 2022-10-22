@@ -13,9 +13,9 @@ Each downsample halves the image dimensions so it should only be used on even si
 downs     |Conv| --> |Block| --> |Downsample| --> |Block| --> |Downsample| --> |Block| --> |Conv|                                     
           +----+     +-----+  |  +----------+     +-----+  |  +----------+     +-----+  |  +----+ 
                               |                            |                            |    |
-                              |                            |                            |  +-----+ 
-middle                        |                            |                            |  |Block|
-                              |                            |                            |  +-----+ 
+                              |                            |                            |  +------+ 
+middle                        |                            |                            |  |middle|
+                              |                            |                            |  +------+ 
           +----+     +-----+  v   +--------+      +-----+  v   +--------+      +-----+  v    |
 ups       |Conv| <-- |Block| <--- |Upsample| <--- |Block| <--- |Upsample| <--- |Block| <-----|
           +----+     +-----+      +--------+      +-----+      +--------+      +-----+
@@ -37,6 +37,7 @@ function UNetFixed(
     ; 
     block_layer=ResBlock,
     block_groups::Int=8,
+    num_attention_heads::Int=4,
     #num_blocks::Int=1, ##TODO
     ) 
     model_channels % block_groups == 0 || error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
@@ -70,6 +71,8 @@ function UNetFixed(
 
     mid_ch = channels[end]
     middle = (
+        block_layer(mid_ch => mid_ch, time_dim; groups=block_groups),
+        SkipConnection(MultiheadAttention(mid_ch, nhead=num_attention_heads), +),
         block_layer(mid_ch => mid_ch, time_dim; groups=block_groups),
     )
 

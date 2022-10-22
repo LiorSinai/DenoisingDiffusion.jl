@@ -49,7 +49,10 @@ println("validation data: ", size(val_x))
 ## create
 in_channels = size(train_x, 3)
 data_shape = size(train_x)[1:3]
-model = UNet(in_channels, model_channels, num_timesteps; block_layer=ResBlock, block_groups=8, channel_multipliers=(1, 2, 4))
+model = UNet(in_channels, model_channels, num_timesteps; 
+    block_layer=ResBlock, block_groups=8, channel_multipliers=(1, 2, 4), 
+    num_attention_heads=4, 
+    )
 βs = cosine_beta_schedule(num_timesteps, 0.008)
 diffusion = GaussianDiffusion(Vector{Float32}, βs, data_shape, model)
 ## load
@@ -75,6 +78,7 @@ else
     println("  ", opt)
 end
 
+println("Calculating initial loss")
 val_loss = 0.0
 for x in val_data
     global val_loss

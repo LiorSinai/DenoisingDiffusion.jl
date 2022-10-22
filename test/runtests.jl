@@ -5,4 +5,5 @@ using DenoisingDiffusion.Flux
 @testset  verbose = true  "DenoisingDiffusion" begin
     include("test_models.jl")
     include("convert_fixed_nested.jl")
+    include("test_attention.jl")
 end

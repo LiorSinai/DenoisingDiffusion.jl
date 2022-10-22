@@ -5,7 +5,9 @@ end
 
 function transfer_weights!(src::Conv, dest::Conv)
     dest.weight .= src.weight
-    dest.bias .= src.bias
+    if (src.bias !== false)
+        dest.bias .= src.bias
+    end
 end
 
 function transfer_weights!(src::GroupNorm, dest::GroupNorm)
@@ -29,11 +31,28 @@ function transfer_weights!(src::ResBlock, dest::ResBlock)
     end
 end
 
+function transfer_weights!(src::MultiheadAttention, dest::MultiheadAttention)
+    transfer_weights!(src.to_qkv, dest.to_qkv)
+    transfer_weights!(src.to_out, dest.to_out)
+end
+
+function transfer_weights!(src::SkipConnection, dest::SkipConnection)
+    transfer_weights!(src.layers, dest.layers)
+end
+
+function transfer_weights!(src::Chain, dest::Chain)
+    for (src_layer, dest_layer) in zip(src.layers, dest.layers)
+        transfer_weights!(src_layer, dest_layer)
+    end
+end
+
+function transfer_weights!(src::T, dest::T) where T
+end
+
 function transfer_weights!(unet_fixed::UNetFixed, unet::UNet)
     @assert unet.num_levels == 4
     ## downs
-    transfer_weights!(unet_fixed.embed_layers[2], unet.embed_layers[2]) ;
-    transfer_weights!(unet_fixed.embed_layers[3], unet.embed_layers[3]) ;
+    transfer_weights!(unet_fixed.embed_layers, unet.embed_layers) ;
     transfer_weights!(unet_fixed.downs[1], unet.chain[:init]) ;
     transfer_weights!(unet_fixed.downs[2], unet.chain[:down_1]) ;
     transfer_weights!(unet_fixed.downs[3], unet.chain[:skip_1].layers[:downsample_1]) ;
@@ -43,13 +62,15 @@ function transfer_weights!(unet_fixed::UNetFixed, unet::UNet)
     transfer_weights!(unet_fixed.downs[7], unet.chain[:skip_1].layers[:skip_2].layers[:skip_3].layers[:down_4]) ;
 
     ## middle
-    transfer_weights!(unet_fixed.middle[1], unet.chain[:skip_1].layers[:skip_2].layers[:skip_3].layers[:middle]) ;
+    transfer_weights!(unet_fixed.middle[1], unet.chain[:skip_1].layers[:skip_2].layers[:skip_3].layers[:middle_1]) ;
+    transfer_weights!(unet_fixed.middle[2], unet.chain[:skip_1].layers[:skip_2].layers[:skip_3].layers[:middle_attention]) ;
+    transfer_weights!(unet_fixed.middle[3], unet.chain[:skip_1].layers[:skip_2].layers[:skip_3].layers[:middle_2]) ;
 
     ## ups 
     transfer_weights!(unet_fixed.ups[1], unet.chain[:skip_1].layers[:skip_2].layers[:up_3]) ;
-    transfer_weights!(unet_fixed.ups[2][2], unet.chain[:skip_1].layers[:skip_2].layers[:upsample_3][2]) ;
+    transfer_weights!(unet_fixed.ups[2], unet.chain[:skip_1].layers[:skip_2].layers[:upsample_3]) ;
     transfer_weights!(unet_fixed.ups[3], unet.chain[:skip_1].layers[:up_2]) ;
-    transfer_weights!(unet_fixed.ups[4][2], unet.chain[:skip_1].layers[:upsample_2][2]) ;
+    transfer_weights!(unet_fixed.ups[4], unet.chain[:skip_1].layers[:upsample_2]) ;
     transfer_weights!(unet_fixed.ups[5], unet.chain[:up_1]) ;
     transfer_weights!(unet_fixed.ups[6], unet.chain[:final]) ;
 
@@ -78,8 +99,11 @@ end
     ## skip 3
     d7f = unet_fixed.downs[7](d6f);
     m1f = unet_fixed.middle[1](d7f, emb);
+    m2f = unet_fixed.middle[2](m1f);
+    m3f = unet_fixed.middle[3](m2f, emb);
+    mf = m3f
     ## skip3
-    u1f = unet_fixed.ups[1](cat(d6f, m1f, dims=3), emb);
+    u1f = unet_fixed.ups[1](cat(d6f, mf, dims=3), emb);
     u2f = unet_fixed.ups[2](u1f);
     #### skip 2
     u3f = unet_fixed.ups[3](cat(d4f, u2f, dims=3), emb);
@@ -88,28 +112,42 @@ end
     u5f = unet_fixed.ups[5](cat(d2f, u4f, dims=3), emb);
     u6f = unet_fixed.ups[6](u5f);
 
+    #### tests
+    ## skip3
+    skip_layers = unet.chain[:skip_1].layers[:skip_2].layers[:skip_3].layers
+    d7 = skip_layers[1](d6f)
+    @test d7 == d7f
+    m1 = skip_layers[2](d7, emb)
+    @test m1 == m1f
+    m2 = skip_layers[3](m1)
+    @test m2 == m2f
+    m3 = skip_layers[4](m2, emb)
+    @test m3 == m3f
+
     ## skip 2
-    d5 =  unet.chain[:skip_1].layers[:skip_2].layers[1](d4f); #:downsample_2
+    skip_layers = unet.chain[:skip_1].layers[:skip_2].layers
+    d5 =  skip_layers[1](d4f); #:downsample_2
     @test d5 == d5f
-    d6 =  unet.chain[:skip_1].layers[:skip_2].layers[2](d5, emb); #:down_3
+    d6 =  skip_layers[2](d5, emb); #:down_3
     @test d6 == d6f
-    m1 =  unet.chain[:skip_1].layers[:skip_2].layers[3](d6, emb); #:skip_3
-    @test m1 == cat(d6f, m1f, dims=3)
-    u1 =  unet.chain[:skip_1].layers[:skip_2].layers[4](m1, emb); #:up_3
+    m1 =  skip_layers[3](d6, emb); #:skip_3
+    @test m1 == cat(d6f, mf, dims=3)
+    u1 =  skip_layers[4](m1, emb); #:up_3
     @test u1 == u1f
-    u2 = unet.chain[:skip_1].layers[:skip_2].layers[5](u1); #:upsample_3
+    u2 = skip_layers[5](u1); #:upsample_3
     @test u2 == u2f
 
     ## skip 1
-    d3 = unet.chain[:skip_1].layers[1](d2f); # :downsample_1
+    skip_layers = unet.chain[:skip_1].layers
+    d3 = skip_layers[1](d2f); # :downsample_1
     @test d3 == d3f
-    d4 = unet.chain[:skip_1].layers[2](d3, emb); # :down_2
+    d4 = skip_layers[2](d3, emb); # :down_2
     @test d4 == d4f
-    u2 = unet.chain[:skip_1].layers[3](d4, emb); # :skip_2
+    u2 = skip_layers[3](d4, emb); # :skip_2
     @test u2 == cat(d4f, u2f, dims=3)
-    u3 = unet.chain[:skip_1].layers[4](u2, emb); # :up_2
+    u3 = skip_layers[4](u2, emb); # :up_2
     @test u3 == u3f
-    u4 = unet.chain[:skip_1].layers[5](u3); # :upsample_2
+    u4 = skip_layers[5](u3); # :upsample_2
     @test u4 == u4f
 
     ## entire model
@@ -118,12 +156,3 @@ end
     @test hf == u6f
     @test h == hf
 end
-
-# in_channels = size(unet_fixed.downs[1].weight, 3)
-# out_channels = size(unet_fixed.downs[1].weight, 4)
-# num_timesteps = size(unet_fixed.embed_layers[1].weight, 2)
-
-# unet = UNet(in_channels, out_channels, num_timesteps; block_layer=ResBlock, channel_multipliers=(1, 2, 4));
-
-#diffusion=BSON.load("outputs\\MNIST_20220807_2134\\diffusion_epoch=15.bson")[:diffusion]
-#unet_fixed = diffusion.denoise_fn

@@ -3,10 +3,12 @@ module DenoisingDiffusion
 import Base.show, Base.eltype
 
 using Flux
+import Flux._big_show, Flux._show_children
 using ProgressMeter
 using Printf
 using BSON
 using Random
+import NNlib: batched_mul
 
 include("GaussianDiffusion.jl")
 include("train.jl")
@@ -24,6 +26,9 @@ include("models/ConditionalChain.jl")
 export AbstractBiparallel, ConditionalChain, Biparallel, ConditionalSkipConnection
 include("models/blocks.jl")
 export ResBlock, ConvEmbed
+include("models/attention.jl")
+include("models/batched_mul_4d.jl")
+export MultiheadAttention, scaled_dot_attention, batched_mul
 include("models/UNetFixed.jl")
 export UNetFixed
 include("models/UNet.jl")

@@ -21,14 +21,16 @@ The above image shows this process with a trained model for number generation.
 The main export is the `GaussianDiffusion` struct and associated functions.
 Various models and building blocks are included. 
 The models includes a flexible `ConditionalChain` based on `Flux.Chain`. It can handle two inputs where the first is given priority over the second.
-Two versions of UNets (convolutional autoencoder) are available, `UNet` and `UNetFixed`.
+Two versions of UNets (convolutional autoencoder) are available, `UNet` and `UNetFixed`. A `UNet` model made to the same specifications as `UNetFixed` is 100% equivalent. 
 
 `UNet` is flexible and can have an arbitrary number of downsample/upsample pairs (more than five is not advisable).
-It is based on nested `SkipConnection`s.
-`UNetFixed` is a linear model. It has three downsample/upsample pairs and 14 layers. For the default configuration `UNetFixed(1, 8, 100)` will have approximately 50,000 parameters.
-Every doubling of the `model_channels` will approximately quadruple the number of parameters, since the convolution layer size is proportional to the square of the dimension.
+It is based on nested skip connections.
+`UNetFixed` is a linear implementation of the same model. 
+`UNetFixed` has three downsample/upsample pairs and three middle layers with a total of 16 layers. For the default configuration `UNetFixed(1, 8, 100)` will have approximately 150,000 parameters. 
+About 50% of these parameters are in the middle layer - 24% in the attention layer alone.
 
-A `UNet` model made to the same specifications as `UNetFixed` is 100% equivalent.
+
+For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
  
 ### Examples
 
@@ -53,17 +55,18 @@ for an example trained on 1.3 billion parameter model.
 For number generation the Fretchet Inception Distance (FID) is cumbersome. 
 The [Inception V3](https://pytorch.org/hub/pytorch_vision_inception_v3/) model has 27.1 million parameters
 which is overkill for number generation. Instead the simpler Fretchet LeNet Distance is proposed.
-This uses the same calculation except with a smaller LeNet model with approximately 44 thousand parameters.
+This uses the same calculation except with a smaller [LeNet model](https://github.com/FluxML/model-zoo/blob/master/vision/conv_mnist/conv_mnist.jl) with approximately 44,000 parameters.
 The output layer has 84 values as opposed to Inception V3's 2048.
 
 Example values are:
 
-| Model           | Parameters | FLD   |
-| ---             | ---        | ---   |  
-| training data   | 0          | 0.5   |
-| UNetFixed (MSE) | 376,913    | 18.3  |
-| UNetFixed (MAE) | 376,913    | 39.3  |
-| Random          |  0         | +337.6  | 
+| Model         | Parameters | FLD   |
+| ---           | ---        | ---   |  
+| training data | 0          | 0.5   |
+| UNet (MSE)    | 376,913    | 18.3  |
+| UNet with attention (MSE)    | 602,705    | 23.9  |
+| UNet (MAE)    | 376,913    | 39.3  |
+| Random        | 0          | >337  | 
 
 Because this can be very easily trained on a CPU no pretrained weights are necessary.
 However the results will not be standardised.
@@ -85,6 +88,7 @@ Optionally, tests can be run with:
 
 ## Task list
 
-- [ ] Self-attention blocks.
+- [x] Self-attention blocks.
+- [ ] DDIM for more efficient and faster image generation.
 - [ ] Guided diffusion.
 - [ ] Super resolution models.
