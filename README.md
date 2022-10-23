@@ -60,13 +60,15 @@ The output layer has 84 values as opposed to Inception V3's 2048.
 
 Example values are:
 
-| Model         | Parameters | FLD   |
-| ---           | ---        | ---   |  
-| training data | 0          | 0.5   |
-| UNet (MSE)    | 376,913    | 18.3  |
-| UNet with attention (MSE)    | 602,705    | 23.9  |
-| UNet (MAE)    | 376,913    | 39.3  |
-| Random        | 0          | >337  | 
+| Model         | Parameters | FLD   | Notes |
+| ---           | ---        | ---   | ---   |
+| training data | 0          | 0.5   |       |
+| UNet (MSE)    | 376,913    | 18.3  | No attention layer | 
+| UNet (MSE)    | 376,913    | 23.5  | No attention layer. DDIM $\tau_n = 20; \eta=1$ |
+| UNet (MSE)    | 602,705    | 23.9  |       |
+| UNet (MSE)    | 602,705    | 26.3  | DDIM $\tau_n = 20; \eta=1$ |
+| UNet (MAE)    | 376,913    | 39.3  | No attention layer   |
+| Random        | 0          | >337  |        |
 
 Because this can be very easily trained on a CPU no pretrained weights are necessary.
 However the results will not be standardised.
@@ -91,6 +93,6 @@ This repository uses FastAi's [nbdev](https://nbdev.fast.ai/tutorials/git_friend
 ## Task list
 
 - [x] Self-attention blocks.
-- [ ] DDIM for more efficient and faster image generation.
+- [x] DDIM for more efficient and faster image generation.
 - [ ] Guided diffusion.
 - [ ] Super resolution models.

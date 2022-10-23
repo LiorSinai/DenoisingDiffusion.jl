@@ -16,7 +16,7 @@ include("train.jl")
 export GaussianDiffusion
 export linear_beta_schedule, cosine_beta_schedule
 export q_sample, q_posterior_mean_variance
-export p_sample, p_sample_loop, p_sample_loop_all, p_lossess, p_mean_variance, predict_start_from_noise
+export p_sample, p_sample_loop, ddim_sample_loop, p_sample_loop_all, p_lossess, predict_start_from_noise
 export sample
 
 include("models/embed.jl")
