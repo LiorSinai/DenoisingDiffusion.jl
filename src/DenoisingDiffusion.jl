@@ -12,18 +12,20 @@ import NNlib: batched_mul
 
 include("GaussianDiffusion.jl")
 include("train.jl")
+include("classifier_free_guidance.jl")
 
 export GaussianDiffusion
 export linear_beta_schedule, cosine_beta_schedule
 export q_sample, q_posterior_mean_variance
 export p_sample, p_sample_loop, ddim_sample_loop, p_sample_loop_all, p_lossess, predict_start_from_noise
 export sample
+export p_lossess_guided, p_sample_loop_guided, p_sample_loop_all_guided
 
 include("models/embed.jl")
 export SinusoidalPositionEmbedding
 
 include("models/ConditionalChain.jl")
-export AbstractBiparallel, ConditionalChain, Biparallel, ConditionalSkipConnection
+export AbstractParallel, ConditionalChain, Biparallel, ConditionalSkipConnection
 include("models/blocks.jl")
 export ResBlock, ConvEmbed
 include("models/attention.jl")

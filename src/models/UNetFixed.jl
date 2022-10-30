@@ -103,29 +103,29 @@ function (u::UNetFixed)(x::AbstractArray, timesteps::AbstractVector{Int})
 
     h = x
     ## downs
-    h = _maybe_forward_second(u.downs[1], h, emb) # init
-    h = _maybe_forward_second(u.downs[2], h, emb) # block
+    h = _maybe_forward(u.downs[1], h, emb) # init
+    h = _maybe_forward(u.downs[2], h, emb) # block
     h2 = h
-    h = _maybe_forward_second(u.downs[3], h, emb) # downsample
-    h = _maybe_forward_second(u.downs[4], h, emb) # block
+    h = _maybe_forward(u.downs[3], h, emb) # downsample
+    h = _maybe_forward(u.downs[4], h, emb) # block
     h4 = h
-    h = _maybe_forward_second(u.downs[5], h, emb) # downsample
-    h = _maybe_forward_second(u.downs[6], h, emb) # block
+    h = _maybe_forward(u.downs[5], h, emb) # downsample
+    h = _maybe_forward(u.downs[6], h, emb) # block
     h6 = h
-    h = _maybe_forward_second(u.downs[7], h, emb) # block
+    h = _maybe_forward(u.downs[7], h, emb) # block
     for layer in u.middle
-        h = _maybe_forward_second(layer, h, emb)
+        h = _maybe_forward(layer, h, emb)
     end
     ## ups
     h = cat_on_channel_dim(h, h6)
-    h = _maybe_forward_second(u.ups[1], h, emb) # block
-    h = _maybe_forward_second(u.ups[2], h, emb) # upsample
+    h = _maybe_forward(u.ups[1], h, emb) # block
+    h = _maybe_forward(u.ups[2], h, emb) # upsample
     h = cat_on_channel_dim(h, h4)
-    h = _maybe_forward_second(u.ups[3], h, emb) # block
-    h = _maybe_forward_second(u.ups[4], h, emb) # upsample
+    h = _maybe_forward(u.ups[3], h, emb) # block
+    h = _maybe_forward(u.ups[4], h, emb) # upsample
     h = cat_on_channel_dim(h, h2)
-    h = _maybe_forward_second(u.ups[5], h, emb) # block
-    h = _maybe_forward_second(u.ups[6], h, emb) # final
+    h = _maybe_forward(u.ups[5], h, emb) # block
+    h = _maybe_forward(u.ups[6], h, emb) # final
     h      
 end
 

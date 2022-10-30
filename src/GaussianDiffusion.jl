@@ -157,11 +157,6 @@ function predict_start_from_noise(diffusion::GaussianDiffusion, x_t::AbstractArr
     coeff1 .* x_t - coeff2 .* noise
 end
 
-"""
-    model_predictions(diffusion::GaussianDiffusion, x_t, timesteps)
-
-Return predictions for the `noise` and `x_start` using `the denoise_fn` model.
-"""
 function model_predictions(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}; clip_denoised::Bool=true)
     noise = diffusion.denoise_fn(x, timesteps)
     x_start = predict_start_from_noise(diffusion, x, timesteps, noise)
@@ -176,7 +171,7 @@ end
 """
     p_sample(diffusion, x, timesteps, noise; clip_denoised=true)
 
-The reverse process `p(x_{t-1} | x_t)`. Denoise the data by one timestep.
+The reverse process `p(x_{t-1} | x_t, t)`. Denoise the data by one timestep.
 """
 function p_sample(
     diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray; 

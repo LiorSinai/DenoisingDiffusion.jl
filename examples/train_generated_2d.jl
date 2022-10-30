@@ -17,7 +17,7 @@ num_timesteps = 40
 n_batch = 10_000
 to_device = cpu
 d_hid = 16
-num_epochs = 2
+num_epochs = 100
 
 ## data
 
@@ -76,7 +76,6 @@ hyperparameters = Dict(
     "parameters" => sum(length, Flux.params(model)),
     "loss_type" => "$loss_type",
     "d_hid" => d_hid,
-    "seed" => seed,
 )
 
 open(hyperparameters_path, "w") do f

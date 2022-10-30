@@ -24,7 +24,7 @@ A convolutional block that acts on two arguments `(x, emb)`.
 Its output is `activation(norm(conv(x)) .+ embed_layers(emb))` 
 where `embed_layers` is shaped so that each value in the embedding channels is mapped to one output channel.
 """
-struct ConvEmbed{E, C<:Conv, N, A} <: AbstractBiparallel
+struct ConvEmbed{E, C<:Conv, N, A} <: AbstractParallel
     embed_layers::E
     conv::C
     norm::N
@@ -83,7 +83,7 @@ end
 A residual convolutional block that can optionally change the number of channels.   
 Each value in the embedding channels is mapped to one output channel.
 """
-struct ResBlock{I<:ConvEmbed, O, S} <: AbstractBiparallel
+struct ResBlock{I<:ConvEmbed, O, S} <: AbstractParallel
     in_layers::I
     out_layers::O
     skip_transform::S   

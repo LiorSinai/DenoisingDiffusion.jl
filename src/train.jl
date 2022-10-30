@@ -64,12 +64,12 @@ function split_validation(rng::AbstractRNG, data::AbstractArray; frac=0.1)
     data[:, :, :, idxs[1:ntrain]], data[:, :, :, idxs[(ntrain+1):end]]
 end
 
-function split_validation(rng::AbstractRNG, data::AbstractArray, labels::AbstractArray; frac=0.1)
+function split_validation(rng::AbstractRNG, data::AbstractArray, labels::AbstractVector{Int}; frac=0.1)
     nsamples = size(data)[end]
     idxs = randperm(rng, nsamples)
     ntrain = nsamples - floor(Int, frac * nsamples)
-    train_data = (data[:, :, :, idxs[1:ntrain]], labels[:, idxs[1:ntrain]])
-    val_data = (data[:, :, :, idxs[(ntrain+1):end]], labels[:, idxs[(ntrain+1):end]])
+    train_data = (data[:, :, :, idxs[1:ntrain]], labels[idxs[1:ntrain]])
+    val_data = (data[:, :, :, idxs[(ntrain+1):end]], labels[idxs[(ntrain+1):end]])
     train_data, val_data
 end
 

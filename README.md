@@ -2,9 +2,8 @@
 
 A pure Julia implementation of denoising diffusion probabilistic models as popularised in [Denoising Diffusion Probabilistic Models by Jonathan Ho, Ajay Jain and Pieter Abbeel (2020)](https://arxiv.org/abs/2006.11239)
 
-### Basic overview 
-
-
+## Overview 
+### Unconditioned sampling
 <p float="left">
   <img src="images/numbers_reverse.gif" width="45%" style="padding:5px"/>
   <img src="images/numbers_estimate.gif" width="45%"  style="padding:5px"/> 
@@ -16,7 +15,21 @@ At each time step a model predicts the noise to be removed in order to reach the
 This allows an estimate of the final image to be created, which is updated at every time step. 
 The above image shows this process with a trained model for number generation.
 
-### Module 
+### Conditioned sampling with classifier free guidance
+<p align="center">
+  <img src="images/2d_reverse_guided.gif" width="400" height="400"/>
+  <p style="text-align:center">Classifier free guidance</p>
+</p>
+
+It is possible to direct the outcome using classifier free guidance. In this mode a label as well as the timestep is passed to the model. Two images are generated at each timestep: an unconditioned image made using a generic label (label=0) and a conditioned image made using the target label.
+The updated image `x` is then given by a weighted :
+
+```
+x = x_uncond + guidance_scale * (x_cond - x_uncond)
+```
+Where `guidance_scale >= 1`.
+
+## Module 
 
 The main export is the `GaussianDiffusion` struct and associated functions.
 Various models and building blocks are included. 
@@ -94,5 +107,5 @@ This repository uses FastAi's [nbdev](https://nbdev.fast.ai/tutorials/git_friend
 
 - [x] Self-attention blocks.
 - [x] DDIM for more efficient and faster image generation.
-- [ ] Guided diffusion.
+- [x] Guided diffusion.
 - [ ] Super resolution models.
