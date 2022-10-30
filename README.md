@@ -4,7 +4,7 @@ A pure Julia implementation of denoising diffusion probabilistic models as popul
 
 ## Overview 
 ### Unconditioned sampling
-<p float="left">
+<p align="center">
   <img src="images/numbers_reverse.gif" width="45%" style="padding:5px"/>
   <img src="images/numbers_estimate.gif" width="45%"  style="padding:5px"/> 
   <p style="text-align:center">Reverse process (left) and final image estimate (right). These coincide on the final time step.</p>
@@ -22,12 +22,12 @@ The above image shows this process with a trained model for number generation.
 </p>
 
 It is possible to direct the outcome using classifier free guidance. In this mode a label as well as the timestep is passed to the model. Two images are generated at each timestep: an unconditioned image made using a generic label (label=0) and a conditioned image made using the target label.
-The updated image `x` is then given by a weighted :
+The updated image `x` is then given by a weighted combination of the two:
 
 ```
 x = x_uncond + guidance_scale * (x_cond - x_uncond)
 ```
-Where `guidance_scale >= 1`.
+Where `guidance_scale >= 1`. The difference `(x_cond - x_uncond)` represents a very rough gradient.
 
 ## Module 
 
@@ -44,28 +44,10 @@ About 50% of these parameters are in the middle layer - 24% in the attention lay
 
 
 For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
- 
-### Examples
-
-To run the examples: 
-```
-julia examples\\train_images.jl --threads auto
-```
-
-Or start the Julia REPL and run it interactively.
-
-There are three use cases:
-- Spiral (2 values per data point).
-- Numbers (28&times;28=784 values per data point.)
-- Pokemon (48&times;48&times;3=6912 values per data point.)
-
-The spiral use case requires approximately 1,000 parameters. The number generation requires at least 100 times this, and the Pokemon possibly more. So far, satisfying results for the Pokemon have not been achieved.
-See however [This Pokémon Does Not Exist](https://huggingface.co/spaces/ronvolutional/ai-pokemon-card)
-for an example trained on 1.3 billion parameter model.
 
 ## Fretchet LeNet Distances (FLD)
 
-For number generation the Fretchet Inception Distance (FID) is cumbersome. 
+For number generation the [Fretchet Inception Distance (FID)](https://arxiv.org/abs/1706.08500) is cumbersome. 
 The [Inception V3](https://pytorch.org/hub/pytorch_vision_inception_v3/) model has 27.1 million parameters
 which is overkill for number generation. Instead the simpler Fretchet LeNet Distance is proposed.
 This uses the same calculation except with a smaller [LeNet model](https://github.com/FluxML/model-zoo/blob/master/vision/conv_mnist/conv_mnist.jl) with approximately 44,000 parameters.
@@ -102,6 +84,25 @@ Optionally, tests can be run with:
 ```
 
 This repository uses FastAi's [nbdev](https://nbdev.fast.ai/tutorials/git_friendly_jupyter.html) to manage the Jupyter Notebooks for Git. This requires a Python installation of nbdev. To avoid using it, follow the steps in .gitconfig.
+
+## Examples
+
+To run the examples: 
+```
+julia examples\\train_images.jl --threads auto
+```
+
+Or start the Julia REPL and run it interactively.
+
+There are three use cases:
+- Spiral (2 values per data point).
+- Numbers (28&times;28=784 values per data point.)
+- Pokemon (48&times;48&times;3=6912 values per data point.)
+
+The spiral use case requires approximately 1,000 parameters. The number generation requires at least 100 times this, and the Pokemon possibly more. So far, satisfying results for the Pokemon have not been achieved.
+See however [This Pokémon Does Not Exist](https://huggingface.co/spaces/ronvolutional/ai-pokemon-card)
+for an example trained on 1.3 billion parameter model.
+
 
 ## Task list
 
