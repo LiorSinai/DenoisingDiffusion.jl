@@ -21,13 +21,17 @@ The above image shows this process with a trained model for number generation.
   <p style="text-align:center">Classifier free guidance</p>
 </p>
 
-It is possible to direct the outcome using classifier free guidance. In this mode a label as well as the timestep is passed to the model. Two images are generated at each timestep: an unconditioned image made using a generic label (label=0) and a conditioned image made using the target label.
-The updated image `x` is then given by a weighted combination of the two:
+It is possible to direct the outcome using classifier free guidance as introduced in 
+[Classifier-Free Diffusion Guidance by Jonathan Ho and Tim Salimans (2022)](https://arxiv.org/abs/2207.12598).
+In this mode a label as well as the timestep is passed to the model. 
+Two candidates of the noise to be removed are generated at each timestep: unconditioned noise made using a generic label (label=1) and conditioned noise made using the target label.
+The noise that is removed is then given by a weighted combination of the two:
+```
+noise = ϵ_uncond + guidance_scale * (ϵ_cond - ϵ_uncond)
+```
+Where `guidance_scale >= 1`. The difference `(ϵ_cond - ϵ_uncond)` represents a very rough gradient.
 
-```
-x = x_uncond + guidance_scale * (x_cond - x_uncond)
-```
-Where `guidance_scale >= 1`. The difference `(x_cond - x_uncond)` represents a very rough gradient.
+The original paper uses `ϵ_cond + guidance_scale * (ϵ_cond - ϵ_uncond)` but using the baseline as `ϵ_uncond` instead allows it to be cancelled and skipped for the special case of `guidance_scale = 1`.
 
 ## Module 
 
