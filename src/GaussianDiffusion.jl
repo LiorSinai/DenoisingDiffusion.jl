@@ -157,14 +157,9 @@ function predict_start_from_noise(diffusion::GaussianDiffusion, x_t::AbstractArr
     coeff1 .* x_t - coeff2 .* noise
 end
 
-function model_predictions(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}; clip_denoised::Bool=true)
+function model_predictions(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int})
     noise = diffusion.denoise_fn(x, timesteps)
     x_start = predict_start_from_noise(diffusion, x, timesteps, noise)
-
-    if clip_denoised
-        clamp!(x_start, -1, 1)
-    end
-
     x_start, noise
 end
 
@@ -177,7 +172,10 @@ function p_sample(
     diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray; 
     clip_denoised::Bool=true, add_noise::Bool=true
     )
-    x_start, pred_noise = model_predictions(diffusion, x, timesteps; clip_denoised=clip_denoised)
+    x_start, pred_noise = model_predictions(diffusion, x, timesteps)
+    if clip_denoised
+        clamp!(x_start, -1, 1)
+    end
     posterior_mean, posterior_variance = q_posterior_mean_variance(diffusion, x_start, x, timesteps)
     x_prev = posterior_mean
     if add_noise
@@ -218,7 +216,10 @@ function ddim_sample(
     noise::AbstractArray; 
     clip_denoised::Bool=true, η::Float32=1.0f0, add_noise::Bool=true
     )
-    x_start, pred_noise = model_predictions(diffusion, x, timesteps; clip_denoised=clip_denoised)
+    x_start, pred_noise = model_predictions(diffusion, x, timesteps)
+    if clip_denoised
+        clamp!(x_start, -1, 1)
+    end
     α_cumprod = _extract(diffusion.α_cumprods, timesteps, size(x_start))
     α_cumprod_next = _extract(diffusion.α_cumprods, timesteps_next, size(x_start))
     T = eltype(eltype(diffusion))
@@ -281,7 +282,7 @@ function p_sample_loop_all(diffusion::GaussianDiffusion, shape::NTuple; clip_den
     x = randn(T, shape) |> to_device
     x_all = Array{T}(undef, size(x)..., 0) |> to_device
     x_start_all = Array{T}(undef, size(x)..., 0) |> to_device
-    tdim = length(size(x_all)) 
+    tdim = ndims(x_all)
     @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
         timesteps = fill(i, shape[end]) |> to_device;
         noise =  randn(T, size(x)) |> to_device

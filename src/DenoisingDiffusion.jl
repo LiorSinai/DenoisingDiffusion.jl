@@ -18,8 +18,7 @@ export GaussianDiffusion
 export linear_beta_schedule, cosine_beta_schedule
 export q_sample, q_posterior_mean_variance
 export p_sample, p_sample_loop, ddim_sample_loop, p_sample_loop_all, p_lossess, predict_start_from_noise
-export sample
-export p_lossess_guided, p_sample_loop_guided, p_sample_loop_all_guided
+export p_sample_guided, p_sample_loop_guided, p_sample_loop_all_guided, p_lossess_guided
 
 include("models/embed.jl")
 export SinusoidalPositionEmbedding

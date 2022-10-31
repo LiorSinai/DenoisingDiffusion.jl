@@ -134,7 +134,7 @@ p = plot(1:length(history["train_loss"]), history["train_loss"], label="train_lo
 plot!(p, 1:length(history["val_loss"]), history["val_loss"], label="val_loss")
 display(p)
 canvases = []
-for label in 0:3
+for label in 1:4
     X0 = p_sample_loop_guided(diffusion, 1000, label; guidance_scale=1.0f0)
     p0 = scatter(X0[1, :], X0[2, :], alpha=0.5, label="",
         aspectratio=:equal,
