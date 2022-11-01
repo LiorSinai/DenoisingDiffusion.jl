@@ -12,9 +12,9 @@ _maybe_forward(layer, x::AbstractArray, ys::AbstractArray...) = layer(x)
 """
     ConditionalChain(layers...)
 
-Based off `Flux.Chain` except takes in two inputs. 
-If a layer is of type `Biparallel` it uses both inputs else it uses only one.
-The first input can therefore be conditioned on the second input.
+Based off `Flux.Chain` except takes in multiple inputs. 
+If a layer is of type `AbstractParallel` it uses all inputs else it uses only the first one.
+The first input can therefore be conditioned on the other inputs.
 """
 struct ConditionalChain{T<:Union{Tuple, NamedTuple}} <:AbstractParallel
     layers::T
@@ -62,8 +62,8 @@ end
 """
     ConditionalSkipConnection(layers, connection)
 
-The output is equivalent to `connection(layers(x, y), x)`.
-Based off Flux.SkipConnection except passes two arguments to layers.
+The output is equivalent to `connection(layers(x, ys...), x)`.
+Based off Flux.SkipConnection except it passes multiple arguments to layers.
 """
 struct ConditionalSkipConnection{T,F} <:AbstractParallel
     layers::T
@@ -80,28 +80,10 @@ function Base.show(io::IO, b::ConditionalSkipConnection)
     print(io, "ConditionalSkipConnection(", b.layers, ", ", b.connection, ")")
 end
 
-"""
-    Biparallel(connection, layer1, layer2)
-
-The output is equivalent to `(x, y) -> connection(layer1(x), layer2(y))`.
-For a more generic version with multiple arguments see `Flux.Parallel`.
-"""
-struct Biparallel{F,T1,T2} <:AbstractParallel
-    connection::F
-    layer1::T1
-    layer2::T2
-end
-
-Flux.@functor Biparallel
-
-function (m::Biparallel)(x, y)
-    m.connection(m.layer1(x), m.layer2(y))
-end
-
 ### Show. Copied from Flux.jl/src/layers/show.jl
 
 for T in [
-    :ConditionalChain, :Biparallel, ConditionalSkipConnection
+    :ConditionalChain, ConditionalSkipConnection
 ]
     @eval function Base.show(io::IO, m::MIME"text/plain", x::$T)
         if get(io, :typeinfo, nothing) === nothing  # e.g. top level in REPL

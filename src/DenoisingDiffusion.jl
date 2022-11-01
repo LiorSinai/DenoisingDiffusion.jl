@@ -24,7 +24,7 @@ include("models/embed.jl")
 export SinusoidalPositionEmbedding
 
 include("models/ConditionalChain.jl")
-export AbstractParallel, ConditionalChain, Biparallel, ConditionalSkipConnection
+export AbstractParallel, ConditionalChain, ConditionalSkipConnection
 include("models/blocks.jl")
 export ResBlock, ConvEmbed
 include("models/attention.jl")
