@@ -2,11 +2,12 @@ import Flux._big_show
 using Flux: _big_finale, _layer_show
 
 """
-    UNet(in_channels, model_channels, num_timesteps; 
+    UNetConditioned(in_channels, model_channels, num_timesteps, num_classes; 
         channel_multipliers=(1, 2, 4), block_layer=ResBlock, block_groups=8, num_attention_heads=4,
+        combine_embeddings=vcat,
     )
 
-A convolutional autoencoder with time embeddings and skip connections.
+A convolutional autoencoder with time embeddings, class embeddings and skip connections.
 The default configuration has 17 layers and skip connections (each ResBlock and upsample has 2 layers).
 Each downsample halves the image dimensions so it should only be used on even sized images.
 ```
@@ -33,24 +34,28 @@ Each downsample halves the image dimensions so it should only be used on even si
                             +-------+     +-------+
 ```
 """
-struct UNet{E, C<:ConditionalChain}
-    time_embedding::E
+struct UNetConditioned{E1, E2, F, C<:ConditionalChain}
+    time_embedding::E1
+    class_embedding::E2
+    combine_embeddings::F
     chain::C
     num_levels::Int
 end
 
-Flux.@functor UNet (time_embedding, chain,)
+Flux.@functor UNetConditioned (time_embedding, class_embedding, chain,)
 
-function UNet(
+function UNetConditioned(
     in_channels::Int, 
     model_channels::Int,
-    num_timesteps::Int
+    num_timesteps::Int,
     ; 
+    num_classes::Int=1, 
     channel_multipliers::NTuple{N, Int}=(1, 2, 4),
     block_layer=ResBlock,
     block_groups::Int=8,
     num_attention_heads::Int=4,
-    #num_blocks::Int=1, ##TODO
+    combine_embeddings=vcat,
+    #num_blocks::Int=1, #TODO
     ) where N
     model_channels % block_groups == 0 || error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
 
@@ -63,85 +68,60 @@ function UNet(
         Dense(time_dim, time_dim, gelu),
         Dense(time_dim, time_dim)
     )
+    class_embedding = Flux.Embedding((num_classes + 1) => time_dim)
+    embed_dim = (combine_embeddings == vcat) ? 2 * time_dim : time_dim
 
     in_ch, out_ch = in_out[1]
     chain = ConditionalChain(
         init=Conv((3, 3), in_channels => model_channels, stride=(1, 1), pad=(1, 1)),
-        down_1=block_layer(in_ch => in_ch, time_dim; groups=block_groups),
+        down_1=block_layer(in_ch => in_ch, embed_dim; groups=block_groups),
         skip_1=ConditionalSkipConnection(
-                _add_unet_level(in_out, time_dim, 2; 
+                _add_unet_level(in_out, embed_dim, 2; 
                     block_layer=block_layer, block_groups=block_groups, num_attention_heads=num_attention_heads
                 ), 
                 cat_on_channel_dim
             ),
-        up_1=block_layer((in_ch + out_ch) => out_ch, time_dim; groups=block_groups),
+        up_1=block_layer((in_ch + out_ch) => out_ch, embed_dim; groups=block_groups),
         final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1)),
     )
 
-    UNet(time_embed, chain, length(channel_multipliers) + 1)
+    UNetConditioned(time_embed, class_embedding, combine_embeddings, chain, length(channel_multipliers) + 1)
 end
 
-function _add_unet_level(in_out::Vector{Tuple{Int, Int}}, emb_dim::Int, level::Int; 
-        block_layer, block_groups::Int, num_attention_heads::Int
-        )
-    if level > length(in_out)
-        in_ch, out_ch= in_out[end]
-        ks = (Symbol("down_$level"), :middle_1, :middle_attention, :middle_2)
-        layers = (
-            Conv((3, 3), in_ch => out_ch, stride=(1, 1), pad=(1, 1)),
-            block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
-            SkipConnection(MultiheadAttention(out_ch, nhead=num_attention_heads), +),
-            block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
-        )     
-    else # recurse down a layer
-        in_ch_prev, out_ch_prev = in_out[level-1]
-        in_ch, out_ch = in_out[level]
-        ks = (
-            Symbol("downsample_$(level-1)"), 
-            Symbol("down_$level"), 
-            Symbol("skip_$level"),
-            Symbol("up_$level"), 
-            Symbol("upsample_$level")
-        )
-        layers = (
-            downsample_layer(in_ch_prev => out_ch_prev),
-            block_layer(in_ch => in_ch, emb_dim; groups=block_groups),
-            ConditionalSkipConnection(
-                _add_unet_level(in_out, emb_dim, level+1; 
-                    block_layer=block_layer, block_groups=block_groups, num_attention_heads=num_attention_heads), 
-                cat_on_channel_dim
-            ),
-            block_layer((in_ch + out_ch) => out_ch, emb_dim; groups=block_groups),
-            upsample_layer(out_ch => in_ch),
-        )   
-    end
-    ConditionalChain((; zip(ks, layers)...))     
-end
-
-function (u::UNet)(x::AbstractArray, timesteps::AbstractVector{Int})
+function (u::UNetConditioned)(x::AbstractArray, timesteps::AbstractVector{Int}, labels::AbstractVector{Int})
     downsize_factor = 2^(u.num_levels - 2)
     if (size(x, 1) % downsize_factor != 0) || (size(x, 2) % downsize_factor != 0)
         throw(DimensionMismatch(
             "image size $(size(x)[1:2]) is not divisible by $downsize_factor which is required for concatenation during upsampling.")
         )
     end
-    emb = u.time_embedding(timesteps)
+    time_emb = u.time_embedding(timesteps)
+    class_emb = u.class_embedding(labels)
+    emb = u.combine_embeddings(time_emb, class_emb)
     h = u.chain(x, emb)
     h
 end
 
+function (u::UNetConditioned)(x::AbstractArray, timesteps::AbstractVector{Int})
+    batch_size = length(timesteps)
+    labels = fill(1, batch_size)
+    u(x, timesteps, labels)
+end
+
 ## show
 
-function Base.show(io::IO, u::UNet)
-    print(io, "UNet(")
+function Base.show(io::IO, u::UNetConditioned)
+    print(io, "UNetConditioned(")
     print(io, "time_embedding=", u.time_embedding)
+    print(io, "class_embedding=", u.class_embedding)
+    print(io, "combine_embeddings=", u.combine_embeddings)
     print(io, ", chain=", u.chain)
     print(io, ")")
 end
 
-function _big_show(io::IO, u::UNet, indent::Int=0, name=nothing)
-    println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNet(")
-    for layer in [:time_embedding, :chain]
+function _big_show(io::IO, u::UNetConditioned, indent::Int=0, name=nothing)
+    println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNetConditioned(")
+    for layer in [:time_embedding, :class_embedding, :combine_embeddings, :chain]
         _big_show(io, getproperty(u, layer), indent+2, layer)
     end
     if indent == 0  
@@ -152,7 +132,7 @@ function _big_show(io::IO, u::UNet, indent::Int=0, name=nothing)
     end
 end
 
-function Base.show(io::IO, m::MIME"text/plain", x::UNet)
+function Base.show(io::IO, m::MIME"text/plain", x::UNetConditioned)
     if get(io, :typeinfo, nothing) === nothing  # e.g. top level in REPL
         _big_show(io, x)
     elseif !get(io, :compact, false)  # e.g. printed inside a Vector, but not a Matrix

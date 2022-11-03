@@ -52,7 +52,7 @@ end
 function transfer_weights!(unet_fixed::UNetFixed, unet::UNet)
     @assert unet.num_levels == 4
     ## downs
-    transfer_weights!(unet_fixed.embed_layers, unet.embed_layers) ;
+    transfer_weights!(unet_fixed.time_embedding, unet.time_embedding) ;
     transfer_weights!(unet_fixed.downs[1], unet.chain[:init]) ;
     transfer_weights!(unet_fixed.downs[2], unet.chain[:down_1]) ;
     transfer_weights!(unet_fixed.downs[3], unet.chain[:skip_1].layers[:downsample_1]) ;
@@ -85,7 +85,7 @@ end
 
     x = rand(Float32, 28, 28, 1, 2);
     t = rand(1:100, 2);
-    emb = unet_fixed.embed_layers(t);
+    emb = unet_fixed.time_embedding(t);
 
     ### UnetFixed forward path
     d1f = unet_fixed.downs[1](x) ;

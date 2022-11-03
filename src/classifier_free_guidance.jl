@@ -16,7 +16,10 @@ function p_lossess_guided(
     loss(model_out, noise)
 end
 
-function p_lossess_guided(diffusion::GaussianDiffusion, loss, xy::Tuple; to_device=cpu, p_uncond::Float64=0.20)
+function p_lossess_guided(
+        diffusion::GaussianDiffusion, loss, xy::Tuple{AbstractArray, AbstractVector}; 
+        to_device=cpu, p_uncond::Float64=0.20
+    )
     x_start = xy[1]
     labels = xy[2]
     batch_size = size(x_start)[end]

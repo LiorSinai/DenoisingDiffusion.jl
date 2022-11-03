@@ -37,14 +37,17 @@ The original paper uses `ϵ_cond + guidance_scale * (ϵ_cond - ϵ_uncond)` but u
 
 The main export is the `GaussianDiffusion` struct and associated functions.
 Various models and building blocks are included. 
-The models includes a flexible `ConditionalChain` based on `Flux.Chain`. It can handle two inputs where the first is given priority over the second.
-Two versions of UNets (convolutional autoencoder) are available, `UNet` and `UNetFixed`. A `UNet` model made to the same specifications as `UNetFixed` is 100% equivalent. 
+The models includes a flexible `ConditionalChain` based on `Flux.Chain`. It can handle multiple inputs where the first input is given priority.
+Two versions of UNets (convolutional autoencoder) are available, `UNet` and `UNetFixed`.
+
+ A `UNet` model made to the same specifications as `UNetFixed` is 100% equivalent. 
 
 `UNet` is flexible and can have an arbitrary number of downsample/upsample pairs (more than five is not advisable).
 It is based on nested skip connections.
 `UNetFixed` is a linear implementation of the same model. 
 `UNetFixed` has three downsample/upsample pairs and three middle layers with a total of 16 layers. For the default configuration `UNetFixed(1, 8, 100)` will have approximately 150,000 parameters. 
 About 50% of these parameters are in the middle layer - 24% in the attention layer alone.
+
 
 
 For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
@@ -57,20 +60,21 @@ which is overkill for number generation. Instead the simpler Fretchet LeNet Dist
 This uses the same calculation except with a smaller [LeNet model](https://github.com/FluxML/model-zoo/blob/master/vision/conv_mnist/conv_mnist.jl) with approximately 44,000 parameters.
 The output layer has 84 values as opposed to Inception V3's 2048.
 
+No pretrained weights are necessary because the LeNet model can be very easily trained on a CPU.
+However results will not be standardised.
+
 Example values are:
 
-| Model         | Parameters | FLD   | Notes |
-| ---           | ---        | ---   | ---   |
-| training data | 0          | 0.5   |       |
-| UNet (MSE)    | 376,913    | 18.3  | No attention layer | 
-| UNet (MSE)    | 376,913    | 23.5  | No attention layer. DDIM $\tau_n = 20; \eta=1$ |
-| UNet (MSE)    | 602,705    | 23.9  |       |
-| UNet (MSE)    | 602,705    | 26.3  | DDIM $\tau_n = 20; \eta=1$ |
-| UNet (MAE)    | 376,913    | 39.3  | No attention layer   |
-| Random        | 0          | >337  |        |
+| Model           | Parameters | FLD   | Notes |
+| ---             | ---        | ---   | ---   |
+| training data   | 0          | 0.5   |       |
+| UNetConditioned | 622, 865   | 7.0   | Guidance with $\gamma=2$ and 1000 samples per label  | 
+| UNet            | 376,913    | 18.3  | No attention layer | 
+| UNet            | 602,705    | 23.9  |       |
+| UNet            | 602,705    | 26.3  | DDIM $\tau_n = 20; \eta=1$ |
+| Random          | 0          | >337  |        |
 
-Because this can be very easily trained on a CPU no pretrained weights are necessary.
-However the results will not be standardised.
+The loss is Mean Squared Error. All models were trained for 15 epochs.
 
 ## Installation
 
@@ -113,4 +117,3 @@ for an example trained on 1.3 billion parameter model.
 - [x] Self-attention blocks.
 - [x] DDIM for more efficient and faster image generation.
 - [x] Guided diffusion.
-- [ ] Super resolution models.

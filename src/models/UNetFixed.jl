@@ -22,7 +22,7 @@ ups       |Conv| <-- |Block| <--- |Upsample| <--- |Block| <--- |Upsample| <--- |
 ```
 """
 struct UNetFixed{E, D<:Tuple, M<:Tuple, U<:Tuple}
-    embed_layers::E
+    time_embedding::E
     downs::D
     middle::M
     ups::U
@@ -99,7 +99,7 @@ function (u::UNetFixed)(x::AbstractArray, timesteps::AbstractVector{Int})
             "image sizes $(size(x)[1:2]) is not divisible by 8, which is required for concatenation during upsampling.")
         )
     end
-    emb = u.embed_layers(timesteps)
+    emb = u.time_embedding(timesteps)
 
     h = x
     ## downs
@@ -133,7 +133,7 @@ end
 
 function Base.show(io::IO, u::UNetFixed)
     print(io, "UNetFixed(")
-    print(io, "embed_layers=", u.embed_layers)
+    print(io, "time_embedding=", u.time_embedding)
     for level in [:downs, :middle, :ups]
         print(io, ", ", level, "=(")
         for (i, layer) in enumerate(getproperty(u, level))
@@ -157,7 +157,7 @@ _min_str(l::Chain) = "Chain(" * join([_min_str(x) for x in l], ", ") *")"
 
 function _big_show(io::IO, u::UNetFixed, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNetFixed(")
-    for layer in [:embed_layers, :downs, :middle, :ups]
+    for layer in [:time_embedding, :downs, :middle, :ups]
         _big_show(io, getproperty(u, layer), indent+2, layer)
     end
     if indent == 0  

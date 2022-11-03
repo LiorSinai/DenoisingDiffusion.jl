@@ -7,6 +7,7 @@ using Printf
 using Random
 using ProgressMeter
 
+using Revise
 using DenoisingDiffusion
 using DenoisingDiffusion: train!, split_validation, load_opt_state!
 include("utilities.jl")
@@ -15,49 +16,41 @@ include("utilities.jl")
 
 num_timesteps = 100
 seed = 2714
-dataset = :MNIST  # :MNIST or :Pokemon
+dataset = :MNIST
 data_directory = "path\\to\\MNIST"
 output_directory = "outputs\\$(dataset)_" * Dates.format(now(), "yyyymmdd_HHMM")
 model_channels = 16
 learning_rate = 0.001
+combine_embeddings = vcat
 num_epochs = 10
+p_uncond = 0.2
 loss_type = Flux.mse;
 to_device = gpu # cpu or gpu
+num_classes = 10
 
 ### data
 
-if dataset == :MNIST
-    trainset = MNIST(Float32, :train, dir=data_directory)
-    norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :))
-    train_x, val_x = split_validation(MersenneTwister(seed), norm_data)
-elseif dataset == :Pokemon
-    data_path = joinpath(data_directory, "imgs_WHCN_48x48.bson")
-    data = BSON.load(data_path)[:imgs_WHCN]; 
-    norm_data = normalize_neg_one_to_one(data);
-    train_x, val_test_x = split_validation(MersenneTwister(seed), norm_data);
-    n_val = floor(Int, size(val_test_x, 4)/2)
-    n_train = size(train_x, 4)
-    val_x = val_test_x[:, :, :, 1:n_val]
-    test_x = val_test_x[:, :, :, (n_val + 1):end]
-else 
-    throw("$dataset not supported")
-end
+trainset = MNIST(Float32, :train, dir=data_directory);
+norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :));
+labels = 2 .+ trainset.targets; # 1->default, 2->0, 3->1, ..
+train_x, val_x = split_validation(MersenneTwister(seed), norm_data, labels);
 
-println("train data:      ", size(train_x))
-println("validation data: ", size(val_x))
+println("train data:      ", size(train_x[1]), "--", size(train_x[2]))
+println("validation data: ", size(val_x[1]), "--",  size(val_x[2]))
 
 ### model
 ## create
-in_channels = size(train_x, 3)
-data_shape = size(train_x)[1:3]
-model = UNet(in_channels, model_channels, num_timesteps; 
+in_channels = size(train_x[1], 3)
+data_shape = size(train_x[1])[1:3]
+model = UNetConditioned(in_channels, model_channels, num_timesteps; 
+    num_classes=num_classes,
     block_layer=ResBlock, block_groups=8, channel_multipliers=(1, 2, 4), 
-    num_attention_heads=4, 
+    num_attention_heads=4, combine_embeddings=combine_embeddings
     )
 βs = cosine_beta_schedule(num_timesteps, 0.008)
 diffusion = GaussianDiffusion(Vector{Float32}, βs, data_shape, model)
 ## load
-# BSON.@load "outputs\\MNIST_20220814_2214\\diffusion_opt.bson" diffusion opt
+# BSON.@load "outputs\\MNIST_20221031_16cond\\diffusion_opt.bson" diffusion opt
 # params_start = Flux.params(diffusion);
 
 display(diffusion.denoise_fn)
@@ -68,7 +61,7 @@ diffusion = diffusion |> to_device
 
 data = Flux.DataLoader(train_x |> to_device; batchsize=32, shuffle=true);
 val_data = Flux.DataLoader(val_x |> to_device; batchsize=32, shuffle=false);
-loss(diffusion, x) = p_lossess(diffusion, loss_type, x; to_device=to_device)
+loss(diffusion, x) = p_lossess_guided(diffusion, loss_type, x; to_device=to_device, p_uncond=p_uncond)
 if isdefined(Main, :opt)
     println("loading optimiser state")
     load_opt_state!(opt, params_start, Flux.params(diffusion), to_device=to_device)
@@ -99,11 +92,14 @@ hyperparameters = Dict(
     "num_timesteps" => num_timesteps,
     "data_shape" => "$(diffusion.data_shape)",
     "denoise_fn" => "$(typeof(diffusion.denoise_fn).name.wrapper)",
+    "combine_embeddings" => "$combine_embeddings",
     "parameters" => sum(length, Flux.params(diffusion.denoise_fn)),
     "model_channels" => model_channels,
     "seed" => seed,
     "loss_type" => "$loss_type",
     "learning_rate" => learning_rate,
+    "p_uncond" => p_uncond,
+    "num_classes" => num_classes,
     "optimiser" => "$(typeof(opt).name.wrapper)",
 )
 open(hyperparameters_path, "w") do f
@@ -136,23 +132,24 @@ println("saved model to $output_path")
 
 ### plot results
 
-p = plot(1:length(history["val_loss"]), history["val_loss"], label="val loss")
-display(p)
+p1 = plot(1:length(history["val_loss"]), history["val_loss"], label="val loss")
+display(p1)
 
-X0 = p_sample_loop(diffusion, 12; to_device=to_device)
-X0 = X0 |> cpu
+X0_all = p_sample_loop_guided(diffusion, collect(1:11); guidance_scale=2.0f0, to_device=to_device);
+X0_all = X0_all |> cpu ;
+imgs = convert2image(trainset, X0_all[:, :, 1, :]);
+p_all = plot([plot(imgs[:, :, i], title="digit=$(i-2)") for i in 1:11]..., ticks=nothing)
+display(p_all)
 
-if dataset == :MNIST
+for label in 1:11
+    println("press enter for next label")
+    readline()
+    X0 = p_sample_loop_guided(diffusion, 12, label; guidance_scale=2.0f0, to_device=to_device)
+    X0 = X0 |> cpu
     imgs = convert2image(trainset, X0[:, :, 1, :])
-elseif dataset == :Pokemon
-    for i in 1:12
-        X0[:, :, :, i] = normalize_zero_to_one(X0[:, :, :, i])
-    end
-    imgs = img_WHC_to_rgb(X0)
+    p0 = plot([plot(imgs[:, :, i]) for i in 1:12]..., plot_title ="label=$label", ticks=nothing)
+    display(p0) 
 end
-
-p = plot([plot(imgs[:, :, i]) for i in 1:12]...)
-display(p)
 
 println("press enter to finish")
 readline()

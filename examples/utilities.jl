@@ -83,9 +83,3 @@ function gaussian_fretchet_distance(μ1::AbstractMatrix, Σ1::AbstractMatrix, μ
     end
     sum(diff .* diff) + tr(Σ1 + Σ2 - 2 * covmean)
 end
-
-function get_activation_statistics(activations::AbstractArray)
-    μ = mean(activations; dims=2)
-    Σ = cov(activations; dims=2, corrected=true)
-    μ, Σ
-end

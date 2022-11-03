@@ -33,6 +33,8 @@ export MultiheadAttention, scaled_dot_attention, batched_mul
 include("models/UNetFixed.jl")
 export UNetFixed
 include("models/UNet.jl")
-export UNet
+include("models/UNetConditioned.jl")
+export UNet, UNetConditioned
+
 
 end # module
