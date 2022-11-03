@@ -2,9 +2,9 @@ import Flux._big_show
 using Flux: _big_finale, _layer_show
 
 """
-    UNetConditioned(in_channels, model_channels, num_timesteps, num_classes; 
-        channel_multipliers=(1, 2, 4), block_layer=ResBlock, block_groups=8, num_attention_heads=4,
-        combine_embeddings=vcat,
+    UNetConditioned(in_channels, model_channels, num_timesteps; 
+        channel_multipliers=(1, 2, 4), block_layer=ResBlock, block_groups=8, num_attention_heads=4, 
+        combine_embeddings=vcat, num_classes=1, 
     )
 
 A convolutional autoencoder with time embeddings, class embeddings and skip connections.
