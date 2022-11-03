@@ -17,8 +17,10 @@ include("classifier_free_guidance.jl")
 export GaussianDiffusion
 export linear_beta_schedule, cosine_beta_schedule
 export q_sample, q_posterior_mean_variance
-export p_sample, p_sample_loop, ddim_sample_loop, p_sample_loop_all, p_lossess, predict_start_from_noise
+export p_sample, p_sample_loop, p_sample_loop_all, p_lossess, predict_start_from_noise
+export ddim_sample, ddim_sample_loop
 export p_sample_guided, p_sample_loop_guided, p_sample_loop_all_guided, p_lossess_guided
+export ddim_sample_guided, ddim_sample_loop_guided
 
 include("models/embed.jl")
 export SinusoidalPositionEmbedding
