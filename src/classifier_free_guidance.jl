@@ -1,12 +1,12 @@
 """
-    p_lossess_guided(diffusion, loss, x_start, timesteps,  labels, noise)
-    p_lossess_guided(diffusion, loss, xy; to_device=cpu, p_uncond=0.2)
+    p_losses(diffusion, loss, x_start, timesteps,  labels, noise)
+    p_losses(diffusion, loss, xy; to_device=cpu, p_uncond=0.2)
 
 Sample from `q(x_t | x_0, c)` and return the loss for the predicted noise.
 
 Reference: [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) by Jonathan Ho, Tim Salimans (2022)  
 """
-function p_lossess_guided(
+function p_losses(
         diffusion::GaussianDiffusion, loss, x_start::AbstractArray{T, N}, 
         timesteps::AbstractVector{Int}, labels::AbstractVector{Int}, noise::AbstractArray
     ) where {T, N}
@@ -18,7 +18,7 @@ function p_lossess_guided(
     loss(model_out, noise)
 end
 
-function p_lossess_guided(
+function p_losses(
         diffusion::GaussianDiffusion, loss, xy::Tuple{AbstractArray, AbstractVector}; 
         to_device=cpu, p_uncond::Float64=0.20
     )
@@ -36,20 +36,20 @@ function p_lossess_guided(
     is_not_class_cond = .~is_class_cond
     labels = (labels .* is_class_cond) + is_not_class_cond # set is_not_class_cond to 1
     labels = labels |> to_device
-    p_lossess_guided(diffusion, loss, x_start, timesteps, labels, noise)
+    p_losses(diffusion, loss, x_start, timesteps, labels, noise)
 end
 
 """
-    p_sample_loop_guided(diffusion, shape, labels; clip_denoised=true, to_device=cpu, guidance_scale=1.0f0)
-    p_sample_loop_guided(diffusion, labels; options...)
-    p_sample_loop_guided(diffusion, batch_size, label; options...)
+    p_sample_loop(diffusion, shape, labels; clip_denoised=true, to_device=cpu, guidance_scale=1.0f0)
+    p_sample_loop(diffusion, labels; options...)
+    p_sample_loop(diffusion, batch_size, label; options...)
 
 Generate new samples and denoise it to the first time step using the classifier free guidance algorithm.
-See `p_sample_loop_all_guided` for a version which returns values for all timesteps.
+See `p_sample_loop_all` for a version which returns values for all timesteps.
 
 Reference: [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) by Jonathan Ho, Tim Salimans (2022)  
 """
-function p_sample_loop_guided(
+function p_sample_loop(
         diffusion::GaussianDiffusion, shape::NTuple, labels::AbstractVector{Int}
         ; clip_denoised::Bool=true, to_device=cpu, guidance_scale::AbstractFloat=1.0f0
     )
@@ -58,7 +58,7 @@ function p_sample_loop_guided(
     @showprogress "Sampling ..." for i in diffusion.num_timesteps:-1:1
         timesteps = fill(i, shape[end]) |> to_device;
         noise =  randn(T, size(x)) |> to_device
-        x, x_start = p_sample_guided(
+        x, x_start = p_sample(
                 diffusion, x, timesteps, labels, noise
                 ; clip_denoised=clip_denoised, add_noise=(i != 1), guidance_scale=guidance_scale
             )
@@ -66,32 +66,32 @@ function p_sample_loop_guided(
     x
 end
 
-function p_sample_loop_guided(diffusion::GaussianDiffusion, batch_size::Int, label::Int; options...)
+function p_sample_loop(diffusion::GaussianDiffusion, batch_size::Int, label::Int; options...)
     labels = fill(label, batch_size)
-    p_sample_loop_guided(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
+    p_sample_loop(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
 end
 
-function p_sample_loop_guided(diffusion::GaussianDiffusion, labels::AbstractVector{Int}; options...)
+function p_sample_loop(diffusion::GaussianDiffusion, labels::AbstractVector{Int}; options...)
     batch_size = length(labels)
-    p_sample_loop_guided(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
+    p_sample_loop(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
 end
 
 """
-    ddim_sample_loop_guided(
+    ddim_sample_loop(
         diffusion::GaussianDiffusion, sampling_timesteps, shape, labels
         ; η=1, clip_denoised=true, to_device=cpu, guidance_scale=1.0f0
     )
-    ddim_sample_loop_guided(diffusion, sampling_timesteps, batch_size, label; options...)
-    ddim_sample_loop_guided(diffusion, sampling_timesteps, labels; options...)
+    ddim_sample_loop(diffusion, sampling_timesteps, batch_size, label; options...)
+    ddim_sample_loop(diffusion, sampling_timesteps, labels; options...)
 
 Generate new samples and denoise it to the first time step using the DDIM algorithm combined with the classifier-free guidance algorithm.
-Because `sampling_timesteps ≤ diffusion.num_timesteps` this is faster than the standard `p_sample_loop_guided`.
+Because `sampling_timesteps ≤ diffusion.num_timesteps` this is faster than the standard `p_sample_loop`.
 
 References: 
 - [Denoising Diffusion Implicit Models](https://arxiv.org/abs/2010.02502) by Song, Jiaming and Meng, Chenlin and Ermon, Stefano (2020)
 - [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) by Jonathan Ho, Tim Salimans (2022) 
 """ 
-function ddim_sample_loop_guided(
+function ddim_sample_loop(
     diffusion::GaussianDiffusion, sampling_timesteps::Int, shape::NTuple, labels::AbstractVector{Int};
     η::AbstractFloat=1.0f0, clip_denoised::Bool=true, to_device=cpu, guidance_scale::AbstractFloat=1.0f0,
     )
@@ -110,34 +110,34 @@ function ddim_sample_loop_guided(
         timesteps = fill(t, shape[end]) |> to_device;
         timesteps_next = fill(t_next, shape[end]) |> to_device;
         noise = randn(T, size(x)) |> to_device
-        x, x_start = ddim_sample_guided(diffusion, x, timesteps, timesteps_next, labels, noise; 
+        x, x_start = ddim_sample(diffusion, x, timesteps, timesteps_next, labels, noise; 
             clip_denoised=clip_denoised, add_noise=(t_next != 1), η=η, guidance_scale=guidance_scale
         )
     end
     x
 end
 
-function ddim_sample_loop_guided(diffusion::GaussianDiffusion, sampling_timesteps::Int, labels::AbstractVector{Int}; options...)
+function ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps::Int, labels::AbstractVector{Int}; options...)
     batch_size = length(labels)
-    ddim_sample_loop_guided(diffusion, sampling_timesteps, (diffusion.data_shape..., batch_size), labels; options...)
+    ddim_sample_loop(diffusion, sampling_timesteps, (diffusion.data_shape..., batch_size), labels; options...)
 end
 
-function ddim_sample_loop_guided(diffusion::GaussianDiffusion, sampling_timesteps::Int, batch_size::Int, label::Int; options...)
+function ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps::Int, batch_size::Int, label::Int; options...)
     labels = fill(label, batch_size)
-    ddim_sample_loop_guided(diffusion, sampling_timesteps, (diffusion.data_shape..., batch_size), labels; options...)
+    ddim_sample_loop(diffusion, sampling_timesteps, (diffusion.data_shape..., batch_size), labels; options...)
 end
 
 """
-    p_sample_loop_all_guided(diffusion, shape, labels; clip_denoised=true, to_device=cpu, guidance_scale=1.0f0)
-    p_sample_loop_all_guided(diffusion, labels; options...)
-    p_sample_loop_all_guided(diffusion, batch_size, label; options...)
+    p_sample_loop_all(diffusion, shape, labels; clip_denoised=true, to_device=cpu, guidance_scale=1.0f0)
+    p_sample_loop_all(diffusion, labels; options...)
+    p_sample_loop_all(diffusion, batch_size, label; options...)
 
 Generate new samples and denoise them to the first time step. Return all samples where the last dimension is time.
-See `p_sample_loop_guided` for a version which returns only the final sample.
+See `p_sample_loop` for a version which returns only the final sample.
 
 Reference: [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) by Jonathan Ho, Tim Salimans (2022)  
 """
-function p_sample_loop_all_guided(
+function p_sample_loop_all(
         diffusion::GaussianDiffusion, shape::NTuple, labels::AbstractVector{Int}
         ; clip_denoised::Bool=true, to_device=cpu, guidance_scale::AbstractFloat=1.0f0
     )
@@ -149,7 +149,7 @@ function p_sample_loop_all_guided(
     @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
         timesteps = fill(i, shape[end]) |> to_device;
         noise =  randn(T, size(x)) |> to_device
-        x, x_start = p_sample_guided(
+        x, x_start = p_sample(
                 diffusion, x, timesteps, labels, noise
                 ; clip_denoised=clip_denoised, add_noise=(i != 1), guidance_scale=guidance_scale
             )
@@ -159,24 +159,24 @@ function p_sample_loop_all_guided(
     x_all, x_start_all
 end
 
-function p_sample_loop_all_guided(diffusion::GaussianDiffusion, batch_size::Int, label::Int; options...)
+function p_sample_loop_all(diffusion::GaussianDiffusion, batch_size::Int, label::Int; options...)
     labels = fill(label, batch_size)
-    p_sample_loop_all_guided(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
+    p_sample_loop_all(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
 end
 
-function p_sample_loop_all_guided(diffusion::GaussianDiffusion, labels::AbstractVector{Int}; options...)
+function p_sample_loop_all(diffusion::GaussianDiffusion, labels::AbstractVector{Int}; options...)
     batch_size = length(labels)
-    p_sample_loop_all_guided(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
+    p_sample_loop_all(diffusion, (diffusion.data_shape..., batch_size), labels; options...)
 end
 
 """
-    p_sample_guided(diffusion, x, timesteps, labels, noise; clip_denoised=true, add_noise::Bool=true, guidance_scale=1.0f0)
+    p_sample(diffusion, x, timesteps, labels, noise; clip_denoised=true, add_noise::Bool=true, guidance_scale=1.0f0)
 
 The reverse process `p(x_{t-1} | x_t, t, c)`. Denoise the data by one timestep conditioned on labels.
 
 Reference: [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) by Jonathan Ho, Tim Salimans (2022) 
 """
-function p_sample_guided(
+function p_sample(
         diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, labels::AbstractVector{Int}, noise::AbstractArray; 
         clip_denoised::Bool=true, add_noise::Bool=true, guidance_scale::AbstractFloat=1.0f0
     )
@@ -199,7 +199,7 @@ function p_sample_guided(
 end
 
 """
-    ddim_sample_guided(
+    ddim_sample(
         diffusion::GaussianDiffusion, x, timesteps, timesteps_next, labels, noise
         ; η=1, clip_denoised=true, guidance_scale=1.0f
     )
@@ -210,7 +210,7 @@ References:
 - [Denoising Diffusion Implicit Models](https://arxiv.org/abs/2010.02502) by Song, Jiaming and Meng, Chenlin and Ermon, Stefano (2020)
 - [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) by Jonathan Ho, Tim Salimans (2022) 
 """
-function ddim_sample_guided(
+function ddim_sample(
     diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, timesteps_next::AbstractVector{Int},
     labels::AbstractVector{Int}, noise::AbstractArray; 
     clip_denoised::Bool=true, η::AbstractFloat=1.0f0, add_noise::Bool=true, guidance_scale::AbstractFloat=1.0f0

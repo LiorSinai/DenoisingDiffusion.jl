@@ -76,7 +76,7 @@ diffusion = diffusion |> to_device
 data = Flux.DataLoader((X, labels) |> to_device; batchsize=32, shuffle=true);
 val_data = Flux.DataLoader((X_val, labels_val) |> to_device; batchsize=32, shuffle=false);
 loss_type = Flux.mse;
-loss(diffusion, x) = p_lossess_guided(diffusion, loss_type, x; to_device=to_device, p_uncond=p_uncond)
+loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device, p_uncond=p_uncond)
 opt = Adam(0.001);
 
 println("Calculating initial loss")
@@ -135,7 +135,7 @@ plot!(p, 1:length(history["val_loss"]), history["val_loss"], label="val_loss")
 display(p)
 canvases = []
 for label in 1:4
-    X0 = p_sample_loop_guided(diffusion, 1000, label; guidance_scale=1.0f0)
+    X0 = p_sample_loop(diffusion, 1000, label; guidance_scale=1.0f0)
     p0 = scatter(X0[1, :], X0[2, :], alpha=0.5, label="",
         aspectratio=:equal,
         xlims=(-2, 2), ylims=(-2, 2),

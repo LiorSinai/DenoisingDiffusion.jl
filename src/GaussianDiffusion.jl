@@ -164,7 +164,7 @@ function model_predictions(diffusion::GaussianDiffusion, x::AbstractArray, times
 end
 
 """
-    p_sample(diffusion, x, timesteps, noise; clip_denoised=true)
+    p_sample(diffusion, x, timesteps, noise; clip_denoised=true, add_noise=true)
 
 The reverse process `p(x_{t-1} | x_t, t)`. Denoise the data by one timestep.
 """
@@ -186,7 +186,7 @@ end
 
 """
     p_sample_loop(diffusion::GaussianDiffusion, shape; clip_denoised=true, to_device=cpu)
-    p_sample_loop(diffusion::GaussianDiffusion, batch_size; clip_denoised=true, to_device=cpu)
+    p_sample_loop(diffusion::GaussianDiffusion, batch_size; options...)
 
 Generate new samples and denoise it to the first time step.
 See `p_sample_loop_all` for a version which returns values for all timesteps.
@@ -237,7 +237,7 @@ end
 
 """
     ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps, shape; η=1; clip_denoised=true, to_device=cpu)
-    ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps, batch_size; η=1, clip_denoised=true, to_device=cpu)
+    ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps, batch_size; options...)
 
 Generate new samples and denoise it to the first time step using the DDIM algorithm.
 Because `sampling_timesteps ≤ diffusion.num_timesteps` this is faster than the standard `p_sample_loop`.
@@ -275,8 +275,8 @@ function ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps::Int,
 end
 
 """
-    p_sample_loop_all(diffusion::GaussianDiffusion, shape; clip_denoised=true)
-    p_sample_loop_all(diffusion::GaussianDiffusion, batch_size; clip_denoised=true)
+    p_sample_loop_all(diffusion::GaussianDiffusion, shape; clip_denoised=true, to_device=cpu)
+    p_sample_loop_all(diffusion::GaussianDiffusion, batch_size; options...)
 
 Generate new samples and denoise them to the first time step. Return all samples where the last dimension is time.
 See `p_sample_loop` for a version which returns only the final sample.
@@ -302,20 +302,20 @@ function p_sample_loop_all(diffusion::GaussianDiffusion, batch_size::Int=16; opt
 end
 
 """
-    p_lossess(diffusion, loss, x_start, timesteps, noise)
-    p_lossess(diffusion, loss, x_start; to_device=cpu)
+    p_losses(diffusion, loss, x_start, timesteps, noise)
+    p_losses(diffusion, loss, x_start; to_device=cpu)
 
 Sample from `q(x_t | x_0)` and return the loss for the predicted noise.
 """
-function p_lossess(diffusion::GaussianDiffusion, loss, x_start::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray)
+function p_losses(diffusion::GaussianDiffusion, loss, x_start::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray)
     x = q_sample(diffusion, x_start, timesteps, noise)
     model_out = diffusion.denoise_fn(x, timesteps)
 
     loss(model_out, noise)
 end
 
-function p_lossess(diffusion::GaussianDiffusion, loss, x_start::AbstractArray{T, N}; to_device=cpu) where {T, N}
+function p_losses(diffusion::GaussianDiffusion, loss, x_start::AbstractArray{T, N}; to_device=cpu) where {T, N}
     timesteps = rand(1:diffusion.num_timesteps, size(x_start, N)) |> to_device
     noise = randn(eltype(eltype(diffusion)), size(x_start)) |> to_device
-    p_lossess(diffusion, loss, x_start, timesteps, noise)
+    p_losses(diffusion, loss, x_start, timesteps, noise)
 end

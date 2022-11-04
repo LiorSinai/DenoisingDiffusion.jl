@@ -61,7 +61,7 @@ diffusion = diffusion |> to_device
 
 data = Flux.DataLoader(train_x |> to_device; batchsize=32, shuffle=true);
 val_data = Flux.DataLoader(val_x |> to_device; batchsize=32, shuffle=false);
-loss(diffusion, x) = p_lossess_guided(diffusion, loss_type, x; to_device=to_device, p_uncond=p_uncond)
+loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device, p_uncond=p_uncond)
 if isdefined(Main, :opt)
     println("loading optimiser state")
     load_opt_state!(opt, params_start, Flux.params(diffusion), to_device=to_device)
@@ -135,7 +135,7 @@ println("saved model to $output_path")
 p1 = plot(1:length(history["val_loss"]), history["val_loss"], label="val loss")
 display(p1)
 
-X0_all = p_sample_loop_guided(diffusion, collect(1:11); guidance_scale=2.0f0, to_device=to_device);
+X0_all = p_sample_loop(diffusion, collect(1:11); guidance_scale=2.0f0, to_device=to_device);
 X0_all = X0_all |> cpu ;
 imgs = convert2image(trainset, X0_all[:, :, 1, :]);
 p_all = plot([plot(imgs[:, :, i], title="digit=$(i-2)") for i in 1:11]..., ticks=nothing)
@@ -144,7 +144,7 @@ display(p_all)
 for label in 1:11
     println("press enter for next label")
     readline()
-    X0 = p_sample_loop_guided(diffusion, 12, label; guidance_scale=2.0f0, to_device=to_device)
+    X0 = p_sample_loop(diffusion, 12, label; guidance_scale=2.0f0, to_device=to_device)
     X0 = X0 |> cpu
     imgs = convert2image(trainset, X0[:, :, 1, :])
     p0 = plot([plot(imgs[:, :, i]) for i in 1:12]..., plot_title ="label=$label", ticks=nothing)
