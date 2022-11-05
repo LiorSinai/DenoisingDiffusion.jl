@@ -9,13 +9,13 @@ using Flux: _channels_in, _channels_out, _big_finale, _layer_show
 A 14 layer convolutional autoencoder with time embeddings (each ResBlock and upsample has 2 layers).
 Each downsample halves the image dimensions so it should only be used on even sized images.
 ```
-          +----+     +-----+     +----------+     +-----+     +----------+     +-----+     +----+                            
-downs     |Conv| --> |Block| --> |Downsample| --> |Block| --> |Downsample| --> |Block| --> |Conv|                                     
-          +----+     +-----+  |  +----------+     +-----+  |  +----------+     +-----+  |  +----+ 
+          +----+     +-----+     +----------+     +-----+     +----------+     +-----+     +----+
+downs     |Conv| --> |Block| --> |Downsample| --> |Block| --> |Downsample| --> |Block| --> |Conv|
+          +----+     +-----+  |  +----------+     +-----+  |  +----------+     +-----+  |  +----+
                               |                            |                            |    |
-                              |                            |                            |  +------+ 
+                              |                            |                            |  +------+
 middle                        |                            |                            |  |middle|
-                              |                            |                            |  +------+ 
+                              |                            |                            |  +------+
           +----+     +-----+  v   +--------+      +-----+  v   +--------+      +-----+  v    |
 ups       |Conv| <-- |Block| <--- |Upsample| <--- |Block| <--- |Upsample| <--- |Block| <-----|
           +----+     +-----+      +--------+      +-----+      +--------+      +-----+

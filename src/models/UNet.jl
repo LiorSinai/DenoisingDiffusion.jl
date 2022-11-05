@@ -3,33 +3,34 @@ using Flux: _big_finale, _layer_show
 
 """
     UNet(in_channels, model_channels, num_timesteps; 
-        channel_multipliers=(1, 2, 4), block_layer=ResBlock, block_groups=8, num_attention_heads=4,
+        channel_multipliers=(1, 2, 4), block_layer=ResBlock, block_groups=8, 
+        num_attention_heads=4,
     )
 
 A convolutional autoencoder with time embeddings and skip connections.
 The default configuration has 17 layers and skip connections (each ResBlock and upsample has 2 layers).
 Each downsample halves the image dimensions so it should only be used on even sized images.
 ```
-+-----+     +-------+     +-------+     +-----+     +------+                                              
-|:init| --> |:down_1| --> |:skip_1| --> |:up_1| --> |:final|                                                  
++-----+     +-------+     +-------+     +-----+     +------+
+|:init| --> |:down_1| --> |:skip_1| --> |:up_1| --> |:final|
 +-----+     +-------+     +-------+     +-----+     +------+
                             |   |
         ---------------------   -----------------------------------
         |                                                         |
- +-------------+     +-------+     +-------+     +-----+     +-----------+ 
+ +-------------+     +-------+     +-------+     +-----+     +-----------+
  |:downsample_1| --> |:down_2| --> |:skip_2| --> |:up_2| --> |:upsample_2|
  +-------------+     +-------+     +-------+     +-----+     +-----------+
                                      |   |
         ------------------------------   --------------------------
         |                                                         |
- +-------------+     +-------+     +-------+     +-----+     +-----------+ 
+ +-------------+     +-------+     +-------+     +-----+     +-----------+
  |:downsample_2| --> |:down_3| --> |:skip_3| --> |:up_3| --> |:upsample_3|
  +-------------+     +-------+     +-------+     +-----+     +-----------+
                                      |   |
                                 ------   ------
                                 |             |
-                            +-------+     +-------+ 
-                            |:down_4| --> |:middle| 
+                            +-------+     +-------+
+                            |:down_4| --> |:middle|
                             +-------+     +-------+
 ```
 """
