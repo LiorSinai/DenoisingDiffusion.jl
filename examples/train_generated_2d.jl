@@ -46,7 +46,7 @@ data = Flux.DataLoader(X |> to_device; batchsize=32, shuffle=true);
 X_val = normalize_neg_one_to_one(make_spiral(floor(Int, 0.1 * n_batch)))
 val_data = Flux.DataLoader(X_val |> to_device; batchsize=32, shuffle=false);
 loss_type = Flux.mse;
-loss(diffusion, x) = p_lossess(diffusion, loss_type, x; to_device=to_device)
+loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device)
 opt = Adam(0.001);
 
 start_time = time_ns()

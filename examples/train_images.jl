@@ -68,7 +68,7 @@ diffusion = diffusion |> to_device
 
 data = Flux.DataLoader(train_x |> to_device; batchsize=32, shuffle=true);
 val_data = Flux.DataLoader(val_x |> to_device; batchsize=32, shuffle=false);
-loss(diffusion, x) = p_lossess(diffusion, loss_type, x; to_device=to_device)
+loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device)
 if isdefined(Main, :opt)
     println("loading optimiser state")
     load_opt_state!(opt, params_start, Flux.params(diffusion), to_device=to_device)
