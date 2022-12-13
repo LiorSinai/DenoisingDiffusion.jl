@@ -3,6 +3,7 @@ using Flux: update!, DataLoader
 using Flux.Optimise: AbstractOptimiser
 using Flux.Zygote: sensitivity, pullback
 using Printf: @sprintf
+using ProgressMeter
 
 function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser, val_data;
     num_epochs::Int=10,

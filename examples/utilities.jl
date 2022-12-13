@@ -71,9 +71,9 @@ Uses Newton's method to find the root for the equation `f(root)=0`.
 If a function has multiple roots a good initial `root` is required to get an answer in the desired region.
 """
 function newtons_method(f, fgrad, root::AbstractFloat, rmin::AbstractFloat, rmax::AbstractFloat; num_iters::Int=10, ϵ::AbstractFloat=0.3)
-    grad0 = fgrad(root)
-    if (abs(grad0) < ϵ) 
-        #@warn("gradient=$grad0 is too low for Newton's method. Returning root without optimization.")
+    grad = fgrad(root)
+    if (abs(grad) < ϵ) 
+        @warn("gradient=$grad is too low for Newton's method. Returning seed without optimization.")
         return root
     end
     for i in 1:num_iters

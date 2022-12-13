@@ -84,7 +84,7 @@ function linear_beta_schedule(num_timesteps::Int, β_start=0.0001f0, β_end=0.02
     scale = convert(typeof(β_start), 1000 / num_timesteps)
     β_start *= scale
     β_end *= scale
-    collect(range(β_start, β_end; length=num_timesteps))
+    range(β_start, β_end; length=num_timesteps)
 end
 
 """
