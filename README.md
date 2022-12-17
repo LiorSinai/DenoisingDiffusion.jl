@@ -2,6 +2,8 @@
 
 A pure Julia implementation of denoising diffusion probabilistic models as popularised in [Denoising Diffusion Probabilistic Models by Jonathan Ho, Ajay Jain and Pieter Abbeel (2020)](https://arxiv.org/abs/2006.11239)
 
+For detailed examples please the notebooks at the corresponding project at [github.com/LiorSinai/DenoisingDiffusion-examples](https://github.com/LiorSinai/DenoisingDiffusion-examples). The notebooks were originally part of this repository but were removed using [git-filter-repo](https://github.com/newren/git-filter-repo) to make this repository more lightweight.
+
 ## Overview 
 ### Unconditioned sampling
 <p align="center">
@@ -47,8 +49,6 @@ It is based on nested skip connections.
 `UNetFixed` is a linear implementation of the same model. 
 `UNetFixed` has three downsample/upsample pairs and three middle layers with a total of 16 layers. For the default configuration `UNetFixed(1, 8, 100)` will have approximately 150,000 parameters. 
 About 50% of these parameters are in the middle layer - 24% in the attention layer alone.
-
-
 
 For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
 
@@ -110,7 +110,6 @@ There are three use cases:
 The spiral use case requires approximately 1,000 parameters. The number generation requires at least 100 times this, and the Pokemon possibly more. So far, satisfying results for the Pokemon have not been achieved.
 See however [This Pokémon Does Not Exist](https://huggingface.co/spaces/ronvolutional/ai-pokemon-card)
 for an example trained on 1.3 billion parameter model.
-
 
 ## Task list
 
