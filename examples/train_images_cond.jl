@@ -44,8 +44,12 @@ in_channels = size(train_x[1], 3)
 data_shape = size(train_x[1])[1:3]
 model = UNetConditioned(in_channels, model_channels, num_timesteps; 
     num_classes=num_classes,
-    block_layer=ResBlock, block_groups=8, channel_multipliers=(1, 2, 4), 
-    num_attention_heads=4, combine_embeddings=combine_embeddings
+    block_layer=ResBlock, 
+    num_blocks_per_level=1,
+    block_groups=8, 
+    channel_multipliers=(1, 2, 4), 
+    num_attention_heads=4, 
+    combine_embeddings=combine_embeddings
     )
 βs = cosine_beta_schedule(num_timesteps, 0.008)
 diffusion = GaussianDiffusion(Vector{Float32}, βs, data_shape, model)

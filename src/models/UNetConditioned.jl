@@ -52,6 +52,7 @@ function UNetConditioned(
     num_classes::Int=1, 
     channel_multipliers::NTuple{N, Int}=(1, 2, 4),
     block_layer=ResBlock,
+    num_blocks_per_level::Int=1,
     block_groups::Int=8,
     num_attention_heads::Int=4,
     combine_embeddings=vcat,
@@ -72,16 +73,28 @@ function UNetConditioned(
     embed_dim = (combine_embeddings == vcat) ? 2 * time_dim : time_dim
 
     in_ch, out_ch = in_out[1]
-    chain = ConditionalChain(
+    down_keys = num_blocks_per_level == 1 ? [Symbol("down_1")] : [Symbol("down_1_$(i)") for i in 1:num_blocks_per_level] 
+    up_keys = num_blocks_per_level == 1 ? [Symbol("up_1")] : [Symbol("up_1_$(i)") for i in 1:num_blocks_per_level] 
+    down_blocks = [
+            block_layer(in_ch => in_ch, embed_dim; groups=block_groups) for i in 1:num_blocks_per_level
+        ]
+    up_blocks = [
+        block_layer((in_ch + out_ch) => out_ch, embed_dim; groups=block_groups),
+        [block_layer(out_ch => out_ch, embed_dim; groups=block_groups) for i in 2:num_blocks_per_level]...
+    ]
+    chain = ConditionalChain(;
         init=Conv((3, 3), in_channels => model_channels, stride=(1, 1), pad=(1, 1)),
-        down_1=block_layer(in_ch => in_ch, embed_dim; groups=block_groups),
+        NamedTuple(zip(down_keys, down_blocks))...,
         skip_1=ConditionalSkipConnection(
                 _add_unet_level(in_out, embed_dim, 2; 
-                    block_layer=block_layer, block_groups=block_groups, num_attention_heads=num_attention_heads
+                    block_layer=block_layer,
+                    block_groups=block_groups,
+                    num_attention_heads=num_attention_heads,
+                    num_blocks_per_level=num_blocks_per_level,
                 ), 
                 cat_on_channel_dim
             ),
-        up_1=block_layer((in_ch + out_ch) => out_ch, embed_dim; groups=block_groups),
+        NamedTuple(zip(up_keys, up_blocks))...,
         final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1)),
     )
 
