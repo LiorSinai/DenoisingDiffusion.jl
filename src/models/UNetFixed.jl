@@ -21,7 +21,7 @@ ups       |Conv| <-- |Block| <--- |Upsample| <--- |Block| <--- |Upsample| <--- |
           +----+     +-----+      +--------+      +-----+      +--------+      +-----+
 ```
 """
-struct UNetFixed{E, D<:Tuple, M<:Tuple, U<:Tuple}
+struct UNetFixed{E,D<:Tuple,M<:Tuple,U<:Tuple}
     time_embedding::E
     downs::D
     middle::M
@@ -31,16 +31,17 @@ end
 Flux.@functor UNetFixed
 
 function UNetFixed(
-    in_channels::Int, 
+    in_channels::Int,
     model_channels::Int,
     num_timesteps::Int
-    ; 
+    ;
     block_layer=ResBlock,
     block_groups::Int=8,
-    num_attention_heads::Int=4,
+    num_attention_heads::Int=4
     #num_blocks::Int=1, ##TODO
-    ) 
-    model_channels % block_groups == 0 || error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
+)
+    model_channels % block_groups == 0 ||
+        error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
 
     channel_multipliers = (1, 2, 4) # hardcoded because Zygote does not support mutating arrays
     channels = [model_channels, map(m -> model_channels * m, channel_multipliers)...]
@@ -52,7 +53,7 @@ function UNetFixed(
         Dense(time_dim, time_dim, gelu),
         Dense(time_dim, time_dim)
     )
-    
+
     downs = Any[
         Conv((3, 3), in_channels => model_channels, stride=(1, 1), pad=(1, 1))
     ]
@@ -91,7 +92,7 @@ function UNetFixed(
     push!(ups, final_conv)
 
     UNetFixed(time_embed, tuple(downs...), middle, tuple(ups...))
-end 
+end
 
 function (u::UNetFixed)(x::AbstractArray, timesteps::AbstractVector{Int})
     if (size(x, 1) % 4 != 0) || (size(x, 2) % 4 != 0)
@@ -126,7 +127,7 @@ function (u::UNetFixed)(x::AbstractArray, timesteps::AbstractVector{Int})
     h = cat_on_channel_dim(h, h2)
     h = _maybe_forward(u.ups[5], h, emb) # block
     h = _maybe_forward(u.ups[6], h, emb) # final
-    h      
+    h
 end
 
 ## show
@@ -146,21 +147,21 @@ function Base.show(io::IO, u::UNetFixed)
 end
 
 _min_str(l) = string(l)
-function _min_str(l::Conv) 
+function _min_str(l::Conv)
     stride = l.stride[1]
     filter = size(l.weight, 1)
-    "Conv($(_channels_in(l)) => $(_channels_out(l)), f=$filter" * (stride==1 ? ")" : ", s=$stride)")
+    "Conv($(_channels_in(l)) => $(_channels_out(l)), f=$filter" * (stride == 1 ? ")" : ", s=$stride)")
 end
 _min_str(l::ConvEmbed) = "ConvEmbed($(_channels_in(l.conv)) => $(_channels_out(l.conv)))"
 _min_str(l::ResBlock) = "ResBlock($(_channels_in(l.in_layers.conv)) => $(_channels_out(l.in_layers.conv)))"
-_min_str(l::Chain) = "Chain(" * join([_min_str(x) for x in l], ", ") *")"
+_min_str(l::Chain) = "Chain(" * join([_min_str(x) for x in l], ", ") * ")"
 
 function _big_show(io::IO, u::UNetFixed, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNetFixed(")
     for layer in [:time_embedding, :downs, :middle, :ups]
-        _big_show(io, getproperty(u, layer), indent+2, layer)
+        _big_show(io, getproperty(u, layer), indent + 2, layer)
     end
-    if indent == 0  
+    if indent == 0
         print(io, ") ")
         _big_finale(io, u)
     else

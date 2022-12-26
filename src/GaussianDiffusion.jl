@@ -121,12 +121,12 @@ end
 
 function q_sample(diffusion::GaussianDiffusion, x_start::AbstractArray, timesteps::AbstractVector{Int}; to_device=cpu)
     T = eltype(eltype(diffusion))
-    noise =  randn(T, size(x_start)) |> to_device
+    noise = randn(T, size(x_start)) |> to_device
     timesteps = timesteps |> to_device
     q_sample(diffusion, x_start, timesteps, noise)
 end
 
-function q_sample(diffusion::GaussianDiffusion, x_start::AbstractArray{T, N}, timestep::Int; to_device=cpu) where {T, N}
+function q_sample(diffusion::GaussianDiffusion, x_start::AbstractArray{T,N}, timestep::Int; to_device=cpu) where {T,N}
     timesteps = fill(timestep, size(x_start, N)) |> to_device
     q_sample(diffusion, x_start, timesteps; to_device=to_device)
 end
@@ -170,9 +170,9 @@ end
 The reverse process ``p(x_{t-1} | x_t, t)``. Denoise the data by one timestep.
 """
 function p_sample(
-    diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray; 
+    diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray;
     clip_denoised::Bool=true, add_noise::Bool=true
-    )
+)
     x_start, pred_noise = model_predictions(diffusion, x, timesteps)
     if clip_denoised
         clamp!(x_start, -1, 1)
@@ -196,8 +196,8 @@ function p_sample_loop(diffusion::GaussianDiffusion, shape::NTuple; clip_denoise
     T = eltype(eltype(diffusion))
     x = randn(T, shape) |> to_device
     @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
-        timesteps = fill(i, shape[end]) |> to_device;
-        noise =  randn(T, size(x)) |> to_device
+        timesteps = fill(i, shape[end]) |> to_device
+        noise = randn(T, size(x)) |> to_device
         x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(i != 1))
     end
     x
@@ -216,10 +216,10 @@ Generate new samples using the Denoising Diffusion Implicit Models (DDIM) algori
 Reference: [Denoising Diffusion Implicit Models](https://arxiv.org/abs/2010.02502) by Song, Jiaming and Meng, Chenlin and Ermon, Stefano (2020).
 """
 function ddim_sample(
-        diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, timesteps_next::AbstractVector{Int},
-        noise::AbstractArray; 
-        clip_denoised::Bool=true, η::Float32=1.0f0, add_noise::Bool=true
-    )
+    diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, timesteps_next::AbstractVector{Int},
+    noise::AbstractArray;
+    clip_denoised::Bool=true, η::Float32=1.0f0, add_noise::Bool=true
+)
     x_start, pred_noise = model_predictions(diffusion, x, timesteps)
     if clip_denoised
         clamp!(x_start, -1, 1)
@@ -230,7 +230,7 @@ function ddim_sample(
     η0 = convert(T, η)
     σ = η0 .* sqrt.((1 .- α_cumprod ./ α_cumprod_next) .* (1 .- α_cumprod_next) ./ (1 .- α_cumprod))
     c = sqrt.(1 .- α_cumprod_next - σ .^ 2)
-    x_prev = x_start .* sqrt.(α_cumprod_next) + c .* pred_noise 
+    x_prev = x_start .* sqrt.(α_cumprod_next) + c .* pred_noise
     if add_noise
         x_prev += σ .* noise
     end
@@ -249,11 +249,11 @@ Because `sampling_timesteps ≤ diffusion.num_timesteps` this is faster than the
 Reference: [Denoising Diffusion Implicit Models](https://arxiv.org/abs/2010.02502) by Song, Jiaming and Meng, Chenlin and Ermon, Stefano (2020)
 """
 function ddim_sample_loop(
-        diffusion::GaussianDiffusion, sampling_timesteps::Int, shape::NTuple;
-        η::AbstractFloat=1.0f0, clip_denoised::Bool=true, to_device=cpu, 
-    )
+    diffusion::GaussianDiffusion, sampling_timesteps::Int, shape::NTuple;
+    η::AbstractFloat=1.0f0, clip_denoised::Bool=true, to_device=cpu
+)
 
-    if  sampling_timesteps > diffusion.num_timesteps
+    if sampling_timesteps > diffusion.num_timesteps
         throw(ErrorException("Require sampling_timesteps ≤ num_timesteps but $sampling_timesteps > $(diffusion.num_timesteps)"))
     end
 
@@ -264,11 +264,11 @@ function ddim_sample_loop(
     time_pairs = collect(zip(times[1:end-1], times[2:end]))
 
     @showprogress "DDIM Sampling..." for (t, t_next) in time_pairs
-        timesteps = fill(t, shape[end]) |> to_device;
-        timesteps_next = fill(t_next, shape[end]) |> to_device;
+        timesteps = fill(t, shape[end]) |> to_device
+        timesteps_next = fill(t_next, shape[end]) |> to_device
         noise = randn(T, size(x)) |> to_device
-        x, x_start = ddim_sample(diffusion, x, timesteps, timesteps_next, noise; 
-            clip_denoised=clip_denoised, add_noise=(t_next != 1)
+        x, x_start = ddim_sample(diffusion, x, timesteps, timesteps_next, noise;
+            clip_denoised=clip_denoised, add_noise=(t_next != 1), η=η
         )
     end
     x
@@ -292,8 +292,8 @@ function p_sample_loop_all(diffusion::GaussianDiffusion, shape::NTuple; clip_den
     x_start_all = Array{T}(undef, size(x)..., 0) |> to_device
     tdim = ndims(x_all)
     @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
-        timesteps = fill(i, shape[end]) |> to_device;
-        noise =  randn(T, size(x)) |> to_device
+        timesteps = fill(i, shape[end]) |> to_device
+        noise = randn(T, size(x)) |> to_device
         x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(i != 1))
         x_all = cat(x_all, x, dims=tdim)
         x_start_all = cat(x_start_all, x_start, dims=tdim)
@@ -318,7 +318,7 @@ function p_losses(diffusion::GaussianDiffusion, loss, x_start::AbstractArray, ti
     loss(model_out, noise)
 end
 
-function p_losses(diffusion::GaussianDiffusion, loss, x_start::AbstractArray{T, N}; to_device=cpu) where {T, N}
+function p_losses(diffusion::GaussianDiffusion, loss, x_start::AbstractArray{T,N}; to_device=cpu) where {T,N}
     timesteps = rand(1:diffusion.num_timesteps, size(x_start, N)) |> to_device
     noise = randn(eltype(eltype(diffusion)), size(x_start)) |> to_device
     p_losses(diffusion, loss, x_start, timesteps, noise)

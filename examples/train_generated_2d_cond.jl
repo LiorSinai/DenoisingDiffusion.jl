@@ -42,26 +42,26 @@ labels_val = 1 .+ vcat(fill(1, n_val), fill(2, n_val), fill(3, n_val))
 ## model
 model = ConditionalChain(
     Parallel(
-        .+, Dense(2, d_hid), 
-        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), 
-        Dense(d_hid, d_hid)), 
+        .+, Dense(2, d_hid),
+        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid),
+            Dense(d_hid, d_hid)),
         Embedding(1 + num_classes => d_hid)
     ),
     swish,
     Parallel(
-        .+, 
-        Dense(d_hid, d_hid), 
-        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid)), 
+        .+,
+        Dense(d_hid, d_hid),
+        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid)),
         Embedding(1 + num_classes => d_hid)
     ),
     swish,
     Parallel(
-        .+, 
-        Dense(d_hid, d_hid), 
-        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), 
-        Dense(d_hid, d_hid)), 
+        .+,
+        Dense(d_hid, d_hid),
+        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid),
+            Dense(d_hid, d_hid)),
         Embedding(1 + num_classes => d_hid)
-        ),
+    ),
     swish,
     Dense(d_hid, 2),
 )
@@ -103,7 +103,7 @@ history_path = joinpath(directory, "history.json")
 hyperparameters_path = joinpath(directory, "hyperparameters.json")
 
 diffusion = diffusion |> cpu
-BSON.bson(output_path, Dict(:diffusion=>diffusion))
+BSON.bson(output_path, Dict(:diffusion => diffusion))
 println("saved model to $output_path")
 
 open(history_path, "w") do f

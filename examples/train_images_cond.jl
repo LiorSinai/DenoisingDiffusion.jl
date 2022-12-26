@@ -36,21 +36,21 @@ labels = 2 .+ trainset.targets; # 1->default, 2->0, 3->1, ..
 train_x, val_x = split_validation(MersenneTwister(seed), norm_data, labels);
 
 println("train data:      ", size(train_x[1]), "--", size(train_x[2]))
-println("validation data: ", size(val_x[1]), "--",  size(val_x[2]))
+println("validation data: ", size(val_x[1]), "--", size(val_x[2]))
 
 ### model
 ## create
 in_channels = size(train_x[1], 3)
 data_shape = size(train_x[1])[1:3]
-model = UNetConditioned(in_channels, model_channels, num_timesteps; 
+model = UNetConditioned(in_channels, model_channels, num_timesteps;
     num_classes=num_classes,
-    block_layer=ResBlock, 
+    block_layer=ResBlock,
     num_blocks_per_level=1,
-    block_groups=8, 
-    channel_multipliers=(1, 2, 4), 
-    num_attention_heads=4, 
+    block_groups=8,
+    channel_multipliers=(1, 2, 4),
+    num_attention_heads=4,
     combine_embeddings=combine_embeddings
-    )
+)
 βs = cosine_beta_schedule(num_timesteps, 0.008)
 diffusion = GaussianDiffusion(Vector{Float32}, βs, data_shape, model)
 ## load
@@ -72,7 +72,7 @@ if isdefined(Main, :opt)
     println("  length(opt.state) = ", length(opt.state))
 else
     println("defining new optimiser")
-    opt = Adam(learning_rate);
+    opt = Adam(learning_rate)
     println("  ", opt)
 end
 
@@ -113,7 +113,7 @@ println("saved hyperparameters to $hyperparameters_path")
 
 println("Starting training")
 start_time = time_ns()
-history = train!(loss, diffusion, data, opt, val_data; 
+history = train!(loss, diffusion, data, opt, val_data;
     num_epochs=num_epochs, save_after_epoch=true, save_dir=output_directory)
 end_time = time_ns() - start_time
 println("\ndone training")
@@ -130,7 +130,7 @@ params_device = Flux.params(diffusion);
 let diffusion = cpu(diffusion)
     # save opt in case want to resume training
     load_opt_state!(opt, params_device, Flux.params(diffusion), to_device=cpu)
-    BSON.bson(output_path, Dict(:diffusion => diffusion, :opt => opt )) 
+    BSON.bson(output_path, Dict(:diffusion => diffusion, :opt => opt))
 end
 println("saved model to $output_path")
 
@@ -140,7 +140,7 @@ p1 = plot(1:length(history["val_loss"]), history["val_loss"], label="val loss")
 display(p1)
 
 X0_all = p_sample_loop(diffusion, collect(1:11); guidance_scale=2.0f0, to_device=to_device);
-X0_all = X0_all |> cpu ;
+X0_all = X0_all |> cpu;
 imgs = convert2image(trainset, X0_all[:, :, 1, :]);
 p_all = plot([plot(imgs[:, :, i], title="digit=$(i-2)") for i in 1:11]..., ticks=nothing)
 display(p_all)
@@ -151,8 +151,8 @@ for label in 1:11
     X0 = p_sample_loop(diffusion, 12, label; guidance_scale=2.0f0, to_device=to_device)
     X0 = X0 |> cpu
     imgs = convert2image(trainset, X0[:, :, 1, :])
-    p0 = plot([plot(imgs[:, :, i]) for i in 1:12]..., plot_title ="label=$label", ticks=nothing)
-    display(p0) 
+    p0 = plot([plot(imgs[:, :, i]) for i in 1:12]..., plot_title="label=$label", ticks=nothing)
+    display(p0)
 end
 
 println("press enter to finish")

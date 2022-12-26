@@ -15,7 +15,7 @@ include("LeNet5.jl")
 
 seed = 2714
 data_directory = "path\\to\\MNIST"
-output_dir= "outputs\\LeNet5"
+output_dir = "outputs\\LeNet5"
 
 ### data
 
@@ -49,16 +49,16 @@ Flux.train!
 opt = ADAM(0.001)
 
 test_acc = batched_metric(accuracy, test_loader, model)
-@printf("test accuracy for %d samples: %.2f%%\n", count_observations(test_loader), test_acc*100)
+@printf("test accuracy for %d samples: %.2f%%\n", count_observations(test_loader), test_acc * 100)
 
 # custom training loop edited from Flux.jl/src/optimise/train.jl
 function train!(loss, model, data, opt, val_data, accuracy; num_epochs=10)
     history = Dict(
-        "train_acc"=>Float64[], 
-        "val_acc"=>Float64[],
-        "train_loss"=>Float64[], 
-        "val_loss"=>Float64[], 
-        )
+        "train_acc" => Float64[],
+        "val_acc" => Float64[],
+        "train_loss" => Float64[],
+        "val_loss" => Float64[],
+    )
     for epoch in 1:num_epochs
         losses = Vector{Float64}()
         params = Flux.params(model)
@@ -66,11 +66,11 @@ function train!(loss, model, data, opt, val_data, accuracy; num_epochs=10)
         for x in data
             batch_loss, back = pullback(params) do
                 loss(x)
-            end    
+            end
             grads = back(sensitivity(batch_loss))
             Flux.update!(opt, params, grads)
             push!(losses, batch_loss)
-            ProgressMeter.next!(progress; showvalues = [("batch loss", @sprintf("%.5f", batch_loss))])
+            ProgressMeter.next!(progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))])
         end
         # update history
         train_acc = batched_metric(accuracy, train_loader, model)
@@ -94,7 +94,7 @@ start_time = time_ns()
 history = train!(loss, model, train_loader, opt, val_loader, accuracy; num_epochs=10)
 end_time = time_ns() - start_time
 println("done training")
-@printf "time taken: %.2fs\n" end_time/1e9
+@printf "time taken: %.2fs\n" end_time / 1e9
 
 ## save
 output_path = joinpath(output_dir, "model.bson")
@@ -108,7 +108,7 @@ end
 ## test
 
 test_acc = batched_metric(accuracy, test_loader, model)
-@printf("test accuracy for %d samples: %.2f%%\n", count_observations(test_loader), test_acc*100)
+@printf("test accuracy for %d samples: %.2f%%\n", count_observations(test_loader), test_acc * 100)
 
 epochs = 1:length(history["train_acc"])
 canvas_acc = plot(
@@ -117,7 +117,7 @@ canvas_acc = plot(
     ylabel="accuracy",
     legend=:right, # :best, :right
     ylims=(0, 1),
-    )
+)
 plot!(canvas_acc, epochs, history["val_acc"], label="valid")
 plot!(canvas_acc, [epochs[end]], [test_acc], markershape=:star, label="test")
 
@@ -128,7 +128,7 @@ canvas_loss = plot(
     ylabel="loss",
     legend=:right, # :best, :right
     ylims=(0, Inf),
-    )
+)
 plot!(canvas_loss, epochs, history["val_loss"], label="valid")
 
 plot(canvas_loss, canvas_acc, plot_title="history", size=(800, 400), margin=3Plots.mm)

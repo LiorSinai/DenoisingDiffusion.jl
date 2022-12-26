@@ -86,8 +86,8 @@ function batched_metric(f, data::DataLoader, g=identity)
     result = 0.0
     num_observations = 0
     for (x, y) in data
-        metric = f(g(x), y) 
-        batch_size = count_observations(x) 
+        metric = f(g(x), y)
+        batch_size = count_observations(x)
         result += metric * batch_size
         num_observations += batch_size
     end

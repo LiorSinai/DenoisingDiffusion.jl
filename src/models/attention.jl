@@ -1,13 +1,13 @@
 using Flux: _channels_in, _channels_out, _big_finale, _layer_show
 import Flux._big_show
 
-struct MultiheadAttention{Q<:Conv, O<:Conv}
+struct MultiheadAttention{Q<:Conv,O<:Conv}
     nhead::Int
     to_qkv::Q
     to_out::O
 end
 
-Flux.@functor MultiheadAttention (to_qkv, to_out, )
+Flux.@functor MultiheadAttention (to_qkv, to_out,)
 
 """
     MultiheadAttention(nhead::Int, dim_model::Int)
@@ -25,7 +25,7 @@ function MultiheadAttention(dim_model::Int, dim_head::Int; nhead::Int=4)
 end
 
 function MultiheadAttention(dim_model::Int; nhead::Int=4)
-    if dim_model % nhead != 0 
+    if dim_model % nhead != 0
         error("model dimension=$dim_model is not divisible by number of heads=$nhead")
     end
     MultiheadAttention(dim_model, div(dim_model, nhead), nhead=nhead)
@@ -40,13 +40,13 @@ Based on Base.eachslice and PyTorch's torch.chunk. Unlike PyTorch, an error is t
 function array_split(A::AbstractArray, n::Int, dim::Int)
     dim <= ndims(A) || throw(DimensionMismatch("A doesn't have $dim dimensions"))
     size(A, dim) % n == 0 || throw(DimensionMismatch("A doesn't divide evenly into $n chunks along the chosen dimension of $dim"))
-    inds_before = ntuple(Returns(:), dim-1)
-    inds_after = ntuple(Returns(:), ndims(A)-dim)
+    inds_before = ntuple(Returns(:), dim - 1)
+    inds_after = ntuple(Returns(:), ndims(A) - dim)
     chuck_size = size(A, dim) ÷ n
-    return (view(A, inds_before..., i:(i + chuck_size - 1), inds_after...) for i in 1:chuck_size:size(A, dim))
+    return (view(A, inds_before..., i:(i+chuck_size-1), inds_after...) for i in 1:chuck_size:size(A, dim))
 end
 
-function (mha::MultiheadAttention)(x::A) where {T, A <: AbstractArray{T, 4}}
+function (mha::MultiheadAttention)(x::A) where {T,A<:AbstractArray{T,4}}
     # batch multiplication version. Input is W × H × C × B
     qkv = mha.to_qkv(x)
     Q, K, V = array_split(qkv, 3, 3)
@@ -54,9 +54,9 @@ function (mha::MultiheadAttention)(x::A) where {T, A <: AbstractArray{T, 4}}
     c = size(Q, 3)
     dh = div(c, mha.nhead)
     #size(Q) == (W, H, dh*nhead, B) => (W*H, dh, nhead, B) => (dh, W*H, nhead, B)
-    Q =  permutedims(reshape(Q, :, dh, mha.nhead, size(x, 4)), [2, 1, 3, 4])
-    K =  permutedims(reshape(K, :, dh, mha.nhead, size(x, 4)), [2, 1, 3, 4])
-    V =  permutedims(reshape(V, :, dh, mha.nhead, size(x, 4)), [2, 1, 3, 4])
+    Q = permutedims(reshape(Q, :, dh, mha.nhead, size(x, 4)), [2, 1, 3, 4])
+    K = permutedims(reshape(K, :, dh, mha.nhead, size(x, 4)), [2, 1, 3, 4])
+    V = permutedims(reshape(V, :, dh, mha.nhead, size(x, 4)), [2, 1, 3, 4])
     #size(attn) == (dh, W*H, nhead, B)
     attn = scaled_dot_attention(Q, K, V)
     #size(attn) == (dh, W*H, nhead, B) => (W*H, dh, nhead, B) => (W, H, dh*nhead, B)
@@ -66,7 +66,7 @@ function (mha::MultiheadAttention)(x::A) where {T, A <: AbstractArray{T, 4}}
     mha.to_out(attn)
 end
 
-function (mha::MultiheadAttention)(x::A) where {T, A <: AbstractArray{T, 3}}
+function (mha::MultiheadAttention)(x::A) where {T,A<:AbstractArray{T,3}}
     # single sample. Make it a batch of 1
     x = reshape(x, size(x)..., 1)
     attn = mha(x)
@@ -91,34 +91,34 @@ If the inputs are 4D arrays, the output is
     A[:, :, h, b] = 1/sqrt(dh) * value[:, :, h, b] * softmax(transpose(key[:, :, h, b]) * query[:, :, h, b]))
 """
 function scaled_dot_attention(query::A1, key::A2, value::A3) where {
-    T, A1 <: AbstractArray{T, 4}, A2 <: AbstractArray{T, 4}, A3 <: AbstractArray{T, 4}}
+    T,A1<:AbstractArray{T,4},A2<:AbstractArray{T,4},A3<:AbstractArray{T,4}}
     # Batched version. Input is (dh, N, nhead, B)
     dh = size(query, 1)
-    scale = one(T)/convert(T, sqrt(dh))
+    scale = one(T) / convert(T, sqrt(dh))
     keyT = permutedims(key, (2, 1, 3, 4)) # important: don't use a view (PermutedDimsArray) because this slows batched_mul
     sim = scale .* batched_mul(keyT, query) #size(sim) == (N, N, nhead, B)
-    sim = softmax(sim; dims=1) 
+    sim = softmax(sim; dims=1)
     batched_mul(value, sim) #size(attention) == (dh, N, nhead, B)
 end
 
 function scaled_dot_attention(query::A1, key::A2, value::A3) where {
-    T, A1 <: AbstractArray{T, 3}, A2 <: AbstractArray{T, 3}, A3 <: AbstractArray{T, 3}}
+    T,A1<:AbstractArray{T,3},A2<:AbstractArray{T,3},A3<:AbstractArray{T,3}}
     # Input is (dh, N, nhead)
     dh = size(query, 1)
-    scale = one(T)/convert(T, sqrt(dh))
+    scale = one(T) / convert(T, sqrt(dh))
     keyT = permutedims(key, (2, 1, 3))
     sim = scale .* batched_mul(keyT, query) #size(sim) == (N, N, nhead)
-    sim = softmax(sim; dims=1) 
+    sim = softmax(sim; dims=1)
     batched_mul(value, sim)  #size(attention) == (dh, N, nhead) 
 end
 
 function scaled_dot_attention(query::A1, key::A2, value::A3) where {
-    T, A1 <: AbstractMatrix{T}, A2 <: AbstractMatrix{T}, A3 <: AbstractMatrix{T}}
+    T,A1<:AbstractMatrix{T},A2<:AbstractMatrix{T},A3<:AbstractMatrix{T}}
     ## Matrix version for a single head. Input is (dh, N)
     dh = size(query, 1)
-    scale = one(T)/convert(T, sqrt(dh))
+    scale = one(T) / convert(T, sqrt(dh))
     sim = scale .* transpose(key) * query #size(sim) == (N, N)
-    sim = softmax(sim; dims=1) 
+    sim = softmax(sim; dims=1)
     value * sim #size(attention) == (dh, N)
 end
 
@@ -137,12 +137,12 @@ end
 function _big_show(io::IO, m::MultiheadAttention, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "MultiheadAttention(")
     for layer in [:nhead, :to_qkv, :to_out]
-        _big_show(io, getproperty(m, layer), indent+2, layer)
+        _big_show(io, getproperty(m, layer), indent + 2, layer)
     end
-    if indent == 0  
+    if indent == 0
         print(io, ") ")
         _big_finale(io, m)
-      else
+    else
         println(io, " "^indent, ")", ",")
     end
 end

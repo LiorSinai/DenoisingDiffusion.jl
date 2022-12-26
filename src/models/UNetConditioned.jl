@@ -34,7 +34,7 @@ Each downsample halves the image dimensions so it should only be used on even si
                             +-------+     +-------+
 ```
 """
-struct UNetConditioned{E1, E2, F, C<:ConditionalChain}
+struct UNetConditioned{E1,E2,F,C<:ConditionalChain}
     time_embedding::E1
     class_embedding::E2
     combine_embeddings::F
@@ -45,20 +45,21 @@ end
 Flux.@functor UNetConditioned (time_embedding, class_embedding, chain,)
 
 function UNetConditioned(
-    in_channels::Int, 
+    in_channels::Int,
     model_channels::Int,
     num_timesteps::Int,
-    ; 
-    num_classes::Int=1, 
-    channel_multipliers::NTuple{N, Int}=(1, 2, 4),
+    ;
+    num_classes::Int=1,
+    channel_multipliers::NTuple{N,Int}=(1, 2, 4),
     block_layer=ResBlock,
     num_blocks_per_level::Int=1,
     block_groups::Int=8,
     num_attention_heads::Int=4,
-    combine_embeddings=vcat,
+    combine_embeddings=vcat
     #num_blocks::Int=1, #TODO
-    ) where N
-    model_channels % block_groups == 0 || error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
+) where {N}
+    model_channels % block_groups == 0 ||
+        error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
 
     channels = [model_channels, map(m -> model_channels * m, channel_multipliers)...]
     in_out = collect(zip(channels[1:end-1], channels[2:end]))
@@ -73,11 +74,11 @@ function UNetConditioned(
     embed_dim = (combine_embeddings == vcat) ? 2 * time_dim : time_dim
 
     in_ch, out_ch = in_out[1]
-    down_keys = num_blocks_per_level == 1 ? [Symbol("down_1")] : [Symbol("down_1_$(i)") for i in 1:num_blocks_per_level] 
-    up_keys = num_blocks_per_level == 1 ? [Symbol("up_1")] : [Symbol("up_1_$(i)") for i in 1:num_blocks_per_level] 
+    down_keys = num_blocks_per_level == 1 ? [Symbol("down_1")] : [Symbol("down_1_$(i)") for i in 1:num_blocks_per_level]
+    up_keys = num_blocks_per_level == 1 ? [Symbol("up_1")] : [Symbol("up_1_$(i)") for i in 1:num_blocks_per_level]
     down_blocks = [
-            block_layer(in_ch => in_ch, embed_dim; groups=block_groups) for i in 1:num_blocks_per_level
-        ]
+        block_layer(in_ch => in_ch, embed_dim; groups=block_groups) for i in 1:num_blocks_per_level
+    ]
     up_blocks = [
         block_layer((in_ch + out_ch) => out_ch, embed_dim; groups=block_groups),
         [block_layer(out_ch => out_ch, embed_dim; groups=block_groups) for i in 2:num_blocks_per_level]...
@@ -86,16 +87,16 @@ function UNetConditioned(
         init=Conv((3, 3), in_channels => model_channels, stride=(1, 1), pad=(1, 1)),
         NamedTuple(zip(down_keys, down_blocks))...,
         skip_1=ConditionalSkipConnection(
-                _add_unet_level(in_out, embed_dim, 2; 
-                    block_layer=block_layer,
-                    block_groups=block_groups,
-                    num_attention_heads=num_attention_heads,
-                    num_blocks_per_level=num_blocks_per_level,
-                ), 
-                cat_on_channel_dim
+            _add_unet_level(in_out, embed_dim, 2;
+                block_layer=block_layer,
+                block_groups=block_groups,
+                num_attention_heads=num_attention_heads,
+                num_blocks_per_level=num_blocks_per_level
             ),
+            cat_on_channel_dim
+        ),
         NamedTuple(zip(up_keys, up_blocks))...,
-        final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1)),
+        final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1))
     )
 
     UNetConditioned(time_embed, class_embedding, combine_embeddings, chain, length(channel_multipliers) + 1)
@@ -135,9 +136,9 @@ end
 function _big_show(io::IO, u::UNetConditioned, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNetConditioned(")
     for layer in [:time_embedding, :class_embedding, :combine_embeddings, :chain]
-        _big_show(io, getproperty(u, layer), indent+2, layer)
+        _big_show(io, getproperty(u, layer), indent + 2, layer)
     end
-    if indent == 0  
+    if indent == 0
         print(io, ") ")
         _big_finale(io, u)
     else

@@ -25,9 +25,9 @@ function make_positional_embedding(dim_embedding::Int, seq_length::Int=1000; n::
     embedding = Matrix{Float32}(undef, dim_embedding, seq_length)
     for pos in 1:seq_length
         for row in 0:2:(dim_embedding-1)
-            denom = 1.0 / (n^(row / (dim_embedding-2)))
-            embedding[row + 1, pos] = sin(pos * denom)
-            embedding[row + 2, pos] = cos(pos * denom)
+            denom = 1.0 / (n^(row / (dim_embedding - 2)))
+            embedding[row+1, pos] = sin(pos * denom)
+            embedding[row+2, pos] = cos(pos * denom)
         end
     end
     embedding

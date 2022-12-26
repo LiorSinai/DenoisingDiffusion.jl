@@ -2,15 +2,15 @@ import Flux._big_show
 import Flux._show_children
 using Flux: _big_finale, _layer_show, _show_layers
 
-cat_on_channel_dim(h::AbstractArray, x::AbstractArray) = cat(x, h, dims = 3)
+cat_on_channel_dim(h::AbstractArray, x::AbstractArray) = cat(x, h, dims=3)
 
 ### upsampling and downsampling
 
 function upsample_layer(channels::Pair{<:Integer,<:Integer})
     Chain(
-        Upsample(:nearest; scale = (2, 2)),
+        Upsample(:nearest; scale=(2, 2)),
         Conv((3, 3), channels, stride=(1, 1), pad=(1, 1))
-    ) 
+    )
 end
 
 function downsample_layer(channels::Pair{<:Integer,<:Integer})
@@ -24,7 +24,7 @@ A convolutional block that acts on two arguments `(x, emb)`.
 Its output is `activation(norm(conv(x)) .+ embed_layers(emb))` 
 where `embed_layers` is shaped so that each value in the embedding channels is mapped to one output channel.
 """
-struct ConvEmbed{E, C<:Conv, N, A} <: AbstractParallel
+struct ConvEmbed{E,C<:Conv,N,A} <: AbstractParallel
     embed_layers::E
     conv::C
     norm::N
@@ -38,7 +38,7 @@ function ConvEmbed(channels::Pair{<:Integer,<:Integer}, emb_channels::Int; group
     embed_layers = Chain(
         swish,
         Dense(emb_channels, out),
-        )
+    )
     conv = Conv((3, 3), channels, stride=(1, 1), pad=(1, 1))
     norm = GroupNorm(out, groups)
     ConvEmbed(embed_layers, conv, norm, activation)
@@ -67,12 +67,12 @@ end
 function _big_show(io::IO, m::ConvEmbed, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "ConvEmbed(")
     for layer in [:embed_layers, :conv, :norm, :activation]
-        _big_show(io, getproperty(m, layer), indent+2, layer)
+        _big_show(io, getproperty(m, layer), indent + 2, layer)
     end
-    if indent == 0  
+    if indent == 0
         print(io, ") ")
         _big_finale(io, m)
-      else
+    else
         println(io, " "^indent, ")", ",")
     end
 end
@@ -83,10 +83,10 @@ end
 A residual convolutional block that can optionally change the number of channels.   
 Each value in the embedding channels is mapped to one output channel.
 """
-struct ResBlock{I<:ConvEmbed, O, S} <: AbstractParallel
+struct ResBlock{I<:ConvEmbed,O,S} <: AbstractParallel
     in_layers::I
     out_layers::O
-    skip_transform::S   
+    skip_transform::S
 end
 
 Flux.@functor ResBlock
@@ -100,7 +100,7 @@ function ResBlock(channels::Pair{<:Integer,<:Integer}, emb_channels::Int; groups
         activation,
     )
     if channels[1] == channels[2]
-        skip_transform = identity 
+        skip_transform = identity
     else
         skip_transform = Conv((3, 3), channels, stride=(1, 1), pad=(1, 1))
     end
@@ -125,12 +125,12 @@ end
 function _big_show(io::IO, m::ResBlock, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "ResBlock(")
     for layer in [:in_layers, :out_layers, :skip_transform]
-        _big_show(io, getproperty(m, layer), indent+2, layer)
+        _big_show(io, getproperty(m, layer), indent + 2, layer)
     end
-    if indent == 0  
+    if indent == 0
         print(io, ") ")
         _big_finale(io, m)
-      else
+    else
         println(io, " "^indent, ")", ",")
     end
 end

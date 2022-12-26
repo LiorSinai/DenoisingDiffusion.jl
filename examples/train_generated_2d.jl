@@ -63,7 +63,7 @@ history_path = joinpath(directory, "history.json")
 hyperparameters_path = joinpath(directory, "hyperparameters.json")
 
 diffusion = diffusion |> cpu
-BSON.bson(output_path, Dict(:diffusion=>diffusion))
+BSON.bson(output_path, Dict(:diffusion => diffusion))
 
 open(history_path, "w") do f
     JSON.print(f, history)

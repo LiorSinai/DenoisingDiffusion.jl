@@ -34,7 +34,7 @@ Each downsample halves the image dimensions so it should only be used on even si
                             +-------+     +-------+
 ```
 """
-struct UNet{E, C<:ConditionalChain}
+struct UNet{E,C<:ConditionalChain}
     time_embedding::E
     chain::C
     num_levels::Int
@@ -43,17 +43,17 @@ end
 Flux.@functor UNet (time_embedding, chain,)
 
 function UNet(
-    in_channels::Int, 
+    in_channels::Int,
     model_channels::Int,
     num_timesteps::Int
-    ; 
-    channel_multipliers::NTuple{N, Int}=(1, 2, 4),
+    ;
+    channel_multipliers::NTuple{N,Int}=(1, 2, 4),
     block_layer=ResBlock,
     num_blocks_per_level::Int=1,
     block_groups::Int=8,
-    num_attention_heads::Int=4,
-    ) where N
-    model_channels % block_groups == 0 || 
+    num_attention_heads::Int=4
+) where {N}
+    model_channels % block_groups == 0 ||
         error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
 
     channels = [model_channels, map(m -> model_channels * m, channel_multipliers)...]
@@ -67,11 +67,11 @@ function UNet(
     )
 
     in_ch, out_ch = in_out[1]
-    down_keys = num_blocks_per_level == 1 ? [Symbol("down_1")] : [Symbol("down_1_$(i)") for i in 1:num_blocks_per_level] 
-    up_keys = num_blocks_per_level == 1 ? [Symbol("up_1")] : [Symbol("up_1_$(i)") for i in 1:num_blocks_per_level] 
+    down_keys = num_blocks_per_level == 1 ? [Symbol("down_1")] : [Symbol("down_1_$(i)") for i in 1:num_blocks_per_level]
+    up_keys = num_blocks_per_level == 1 ? [Symbol("up_1")] : [Symbol("up_1_$(i)") for i in 1:num_blocks_per_level]
     down_blocks = [
-            block_layer(in_ch => in_ch, time_dim; groups=block_groups) for i in 1:num_blocks_per_level
-        ]
+        block_layer(in_ch => in_ch, time_dim; groups=block_groups) for i in 1:num_blocks_per_level
+    ]
     up_blocks = [
         block_layer((in_ch + out_ch) => out_ch, time_dim; groups=block_groups),
         [block_layer(out_ch => out_ch, time_dim; groups=block_groups) for i in 2:num_blocks_per_level]...
@@ -81,39 +81,39 @@ function UNet(
         NamedTuple(zip(down_keys, down_blocks))...,
         down_1=block_layer(in_ch => in_ch, time_dim; groups=block_groups),
         skip_1=ConditionalSkipConnection(
-                _add_unet_level(in_out, time_dim, 2; 
-                    block_layer=block_layer,
-                    block_groups=block_groups,
-                    num_attention_heads=num_attention_heads,
-                    num_blocks_per_level=num_blocks_per_level,
-                ), 
-                cat_on_channel_dim
+            _add_unet_level(in_out, time_dim, 2;
+                block_layer=block_layer,
+                block_groups=block_groups,
+                num_attention_heads=num_attention_heads,
+                num_blocks_per_level=num_blocks_per_level
             ),
+            cat_on_channel_dim
+        ),
         NamedTuple(zip(up_keys, up_blocks))...,
-        final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1)),
+        final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1))
     )
     UNet(time_embed, chain, length(channel_multipliers) + 1)
 end
 
-function _add_unet_level(in_out::Vector{Tuple{Int, Int}}, emb_dim::Int, level::Int; 
-        block_layer, num_blocks_per_level::Int, block_groups::Int, num_attention_heads::Int, 
-        )
+function _add_unet_level(in_out::Vector{Tuple{Int,Int}}, emb_dim::Int, level::Int;
+    block_layer, num_blocks_per_level::Int, block_groups::Int, num_attention_heads::Int
+)
     if level > length(in_out)
-        in_ch, out_ch= in_out[end]
+        in_ch, out_ch = in_out[end]
         keys_ = (Symbol("down_$level"), :middle_1, :middle_attention, :middle_2)
         layers = (
             Conv((3, 3), in_ch => out_ch, stride=(1, 1), pad=(1, 1)),
             block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
             SkipConnection(MultiheadAttention(out_ch, nhead=num_attention_heads), +),
             block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
-        )     
+        )
     else # recurse down a layer
         in_ch_prev, out_ch_prev = in_out[level-1]
         in_ch, out_ch = in_out[level]
-        down_keys = num_blocks_per_level == 1 ? [Symbol("down_$(level)")] : [Symbol("down_$(level)_$(i)") for i in 1:num_blocks_per_level] 
-        up_keys = num_blocks_per_level == 1 ? [Symbol("up_$(level)")] : [Symbol("up_$(level)_$(i)") for i in 1:num_blocks_per_level] 
+        down_keys = num_blocks_per_level == 1 ? [Symbol("down_$(level)")] : [Symbol("down_$(level)_$(i)") for i in 1:num_blocks_per_level]
+        up_keys = num_blocks_per_level == 1 ? [Symbol("up_$(level)")] : [Symbol("up_$(level)_$(i)") for i in 1:num_blocks_per_level]
         keys_ = (
-            Symbol("downsample_$(level-1)"), 
+            Symbol("downsample_$(level-1)"),
             down_keys...,
             Symbol("skip_$level"),
             up_keys...,
@@ -130,19 +130,19 @@ function _add_unet_level(in_out::Vector{Tuple{Int, Int}}, emb_dim::Int, level::I
             downsample_layer(in_ch_prev => out_ch_prev),
             down_blocks...,
             ConditionalSkipConnection(
-                _add_unet_level(in_out, emb_dim, level+1; 
+                _add_unet_level(in_out, emb_dim, level + 1;
                     block_layer=block_layer,
                     block_groups=block_groups,
                     num_attention_heads=num_attention_heads,
-                    num_blocks_per_level=num_blocks_per_level,
-                    ), 
+                    num_blocks_per_level=num_blocks_per_level
+                ),
                 cat_on_channel_dim
             ),
             up_blocks...,
             upsample_layer(out_ch => in_ch),
-        )   
+        )
     end
-    ConditionalChain((; zip(keys_, layers)...))     
+    ConditionalChain((; zip(keys_, layers)...))
 end
 
 function (u::UNet)(x::AbstractArray, timesteps::AbstractVector{Int})
@@ -169,9 +169,9 @@ end
 function _big_show(io::IO, u::UNet, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNet(")
     for layer in [:time_embedding, :chain]
-        _big_show(io, getproperty(u, layer), indent+2, layer)
+        _big_show(io, getproperty(u, layer), indent + 2, layer)
     end
-    if indent == 0  
+    if indent == 0
         print(io, ") ")
         _big_finale(io, u)
     else

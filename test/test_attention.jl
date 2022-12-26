@@ -1,16 +1,16 @@
 @testset "MultiheadAttention" begin
-    model = MultiheadAttention(15, nhead=3);
+    model = MultiheadAttention(15, nhead=3)
     dh = div(15, 3)
-    x = rand(Float32, 8, 8, 15, 2);
+    x = rand(Float32, 8, 8, 15, 2)
     @test_nowarn model(x)
 end
 
 @testset "Mutli same as single" begin
     dh = 5
 
-    Q = rand(Float32, dh, 8*8, 3, 2)
-    K = rand(Float32, dh, 8*8, 3, 2)
-    V = rand(Float32, dh, 8*8, 3, 2)
+    Q = rand(Float32, dh, 8 * 8, 3, 2)
+    K = rand(Float32, dh, 8 * 8, 3, 2)
+    V = rand(Float32, dh, 8 * 8, 3, 2)
 
     batch_idx = 1
     head_idx = 2

@@ -17,7 +17,7 @@ end
 make_spiral(n_samples::Int=1000) = make_spiral(Random.GLOBAL_RNG, n_samples)
 
 function make_moons(rng::AbstractRNG, n_samples::Int=1000)
-    n_moons = floor(Int, n_samples /2)
+    n_moons = floor(Int, n_samples / 2)
     t_min = 0.0
     t_max = π
     t_inner = rand(rng, n_moons) * (t_max - t_min) .+ t_min
@@ -27,7 +27,7 @@ function make_moons(rng::AbstractRNG, n_samples::Int=1000)
     inner_circ_x = 1 .- cos.(t_inner)
     inner_circ_y = 1 .- sin.(t_inner) .- 0.5
 
-    data = [outer_circ_x outer_circ_y ; inner_circ_x inner_circ_y]
+    data = [outer_circ_x outer_circ_y; inner_circ_x inner_circ_y]
     permutedims(data, (2, 1))
 end
 
