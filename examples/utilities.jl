@@ -1,5 +1,6 @@
 using StatsBase
 using LinearAlgebra
+using Images
 
 ## model sizes 
 
@@ -33,7 +34,19 @@ function img_WHC_to_rgb(img_WHC::AbstractArray{T,N}) where {T,N}
     @assert N == 3 || N == 4
     @assert size(img_WHC, 3) == 3
     img_CHW = permutedims(img_WHC, (3, 2, 1, 4:N...))
-    img = colorview(RGB, img_CHW)
+    img = Images.colorview(Images.RGB, img_CHW)
+    img
+end
+
+"""
+    img_WH_to_gray(img_WH) where {T}
+
+Converts images in (width, height) form to gray images.
+"""
+function img_WH_to_gray(img_WH::AbstractArray{T,N}) where {T,N}
+    @assert N == 2 || N == 3
+    img_HW = permutedims(img_WH, (2, 1, 3:N...))
+    img = Images.colorview(Images.Gray, img_HW)
     img
 end
 
@@ -103,13 +116,13 @@ function bisection_method(f, left::AbstractFloat, right::AbstractFloat; num_iter
 end
 
 """
-    gaussian_fretchet_distance(μ1, Σ1, μ2, Σ2)
+    gaussian_frechet_distance(μ1, Σ1, μ2, Σ2)
 
 The Frechet distance between two multivariate Gaussians X_1 ~ N(μ1, Σ1)
 and X_2 ~ N(μ2, Σ2) is
     d^2 = ||μ1 - μ2||^2 + tr(Σ1 + Σ2 - 2*sqrt(Σ1*Σ2))
 """
-function gaussian_fretchet_distance(μ1::AbstractMatrix, Σ1::AbstractMatrix, μ2::AbstractMatrix, Σ2::AbstractMatrix)
+function gaussian_frechet_distance(μ1::AbstractMatrix, Σ1::AbstractMatrix, μ2::AbstractMatrix, Σ2::AbstractMatrix)
     diff = μ1 - μ2
     covmean = sqrt(Σ1 * Σ2)
     if eltype(covmean) <: Complex

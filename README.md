@@ -52,11 +52,11 @@ About 50% of these parameters are in the middle layer - 24% in the attention lay
 
 For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
 
-## Fretchet LeNet Distances (FLD)
+## Frèchet LeNet Distances (FLD)
 
-For number generation the [Fretchet Inception Distance (FID)](https://arxiv.org/abs/1706.08500) is cumbersome. 
+For number generation the [Frechet Inception Distance (FID)](https://arxiv.org/abs/1706.08500) is cumbersome. 
 The [Inception V3](https://pytorch.org/hub/pytorch_vision_inception_v3/) model has 27.1 million parameters
-which is overkill for number generation. Instead the simpler Fretchet LeNet Distance is proposed.
+which is overkill for number generation. Instead the simpler Frèchet LeNet Distance is proposed.
 This uses the same calculation except with a smaller [LeNet model](https://github.com/FluxML/model-zoo/blob/master/vision/conv_mnist/conv_mnist.jl) with approximately 44,000 parameters.
 The output layer has 84 values as opposed to Inception V3's 2048.
 
