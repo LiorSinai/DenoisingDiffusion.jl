@@ -31,25 +31,10 @@ function MultiheadAttention(dim_model::Int; nhead::Int=4)
     MultiheadAttention(dim_model, div(dim_model, nhead), nhead=nhead)
 end
 
-"""
-    MultiheadAttention(nhead::Int, dim_model::Int)
-    MultiheadAttention(nhead::Int, dim_model::Int, dim_head::Int)
-
-Based on Base.eachslice and PyTorch's torch.chunk. Unlike PyTorch, an error is thrown if it cannot evenly divide the array.
-"""
-function array_split(A::AbstractArray, n::Int, dim::Int)
-    dim <= ndims(A) || throw(DimensionMismatch("A doesn't have $dim dimensions"))
-    size(A, dim) % n == 0 || throw(DimensionMismatch("A doesn't divide evenly into $n chunks along the chosen dimension of $dim"))
-    inds_before = ntuple(Returns(:), dim - 1)
-    inds_after = ntuple(Returns(:), ndims(A) - dim)
-    chuck_size = size(A, dim) ÷ n
-    return (view(A, inds_before..., i:(i+chuck_size-1), inds_after...) for i in 1:chuck_size:size(A, dim))
-end
-
 function (mha::MultiheadAttention)(x::A) where {T,A<:AbstractArray{T,4}}
     # batch multiplication version. Input is W × H × C × B
     qkv = mha.to_qkv(x)
-    Q, K, V = array_split(qkv, 3, 3)
+    Q, K, V = Flux.chunk(qkv, 3, dims=3)
 
     c = size(Q, 3)
     dh = div(c, mha.nhead)
