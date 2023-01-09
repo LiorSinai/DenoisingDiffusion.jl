@@ -21,7 +21,7 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
         losses = Vector{Float64}()
         progress = Progress(length(data); desc="epoch $epoch/$num_epochs")
         params = Flux.params(diffusion) # keep here in case of data movement between devices (this might happen during saving)
-        for x in data
+        for (idx, x) in enumerate(data)
             batch_loss, back = pullback(params) do
                 loss(diffusion, x)
             end
@@ -29,6 +29,9 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
             Flux.update!(opt, params, grads)
             push!(losses, batch_loss)
             ProgressMeter.next!(progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))])
+            open(log_path, "a") do f
+                write(f, "$epoch-$idx $batch_loss \n")
+            end
         end
         if save_after_epoch
             path = joinpath(save_dir, "diffusion_epoch=$(epoch).bson")
@@ -40,7 +43,7 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
         open(log_path, "a") do f
             train_loss_epoch = history["train_loss"][end]
             val_loss_epoch = history["val_loss"][end]
-            write(f, "$epoch $train_loss_epoch $val_loss_epoch \n")
+            write(f, "epoch-$epoch $train_loss_epoch $val_loss_epoch \n")
         end
     end
     history
