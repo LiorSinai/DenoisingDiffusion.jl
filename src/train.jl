@@ -14,7 +14,9 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
         "epoch_size" => count_observations(data),
         "train_loss" => Float64[],
         "val_loss" => Float64[],
+        "batch_size" => get_batch_size(data),
     )
+    log_path = joinpath(save_dir, "logs.txt")
     for epoch = 1:num_epochs
         losses = Vector{Float64}()
         progress = Progress(length(data); desc="epoch $epoch/$num_epochs")
@@ -35,6 +37,11 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
             end
         end
         update_history!(diffusion, history, loss, losses, val_data)
+        open(log_path, "a") do f
+            train_loss_epoch = history["train_loss"][end]
+            val_loss_epoch = history["val_loss"][end]
+            write(f, "$epoch $train_loss_epoch $val_loss_epoch \n")
+        end
     end
     history
 end
@@ -43,6 +50,9 @@ count_observations(data::D) where {D<:DataLoader} = count_observations(data.data
 count_observations(data::Tuple) = count_observations(data[1])
 count_observations(data::AbstractArray{<:Any,N}) where {N} = size(data, N)
 count_observations(data) = length(data)
+
+get_batch_size(data::D) where {D<:DataLoader} = data.batchsize
+get_batch_size(data) = 1
 
 function update_history!(diffusion, history, loss, train_losses, val_data)
     push!(history["train_loss"], sum(train_losses) / length(train_losses))
@@ -102,16 +112,20 @@ This is problematic for the case where data is moved between a CPU and a GPU.
 A careful sequence needs to be followed with serialising and deserialising so that they stay in sync.
 
 Sequence to save:
-1) `params_gpu = Flux.params(model)`;
-2) `model_cpu = cpu(model)`
-3) `load_opt_state!(opt, params_gpu, Flux.params(model_cpu), to_device=cpu)`
-4) `BSON.bson(path, Dict(:model => model_cpu, :opt => opt))` 
+```
+params_gpu = Flux.params(model);
+model_cpu = cpu(model)
+load_opt_state!(opt, params_gpu, Flux.params(model_cpu), to_device=cpu)
+BSON.bson(path, Dict(:model => model_cpu, :opt => opt))
+```
 
 Sequence to load:
-1) `BSON.@load path model opt`
-2) `params_cpu = Flux.params(model);`
-3) `model = gpu(model)`
-4) `load_opt_state!(opt, params_cpu, Flux.params(model), to_device=gpu)`
+```               
+BSON.@load path model opt
+params_cpu = Flux.params(model);
+model = gpu(model)
+load_opt_state!(opt, params_cpu, Flux.params(model), to_device=gpu)
+```
 
 See https://discourse.julialang.org/t/deepcopy-flux-model/72930
 """

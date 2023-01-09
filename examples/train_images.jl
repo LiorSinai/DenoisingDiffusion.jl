@@ -21,6 +21,7 @@ data_directory = "path\\to\\data"
 output_directory = "outputs\\$(dataset)_" * Dates.format(now(), "yyyymmdd_HHMM")
 model_channels = 16
 learning_rate = 0.001
+batch_size = 32 
 num_epochs = 10
 loss_type = Flux.mse;
 to_device = gpu # cpu or gpu
@@ -71,8 +72,8 @@ println("")
 ### train
 diffusion = diffusion |> to_device
 
-data = Flux.DataLoader(train_x |> to_device; batchsize=32, shuffle=true);
-val_data = Flux.DataLoader(val_x |> to_device; batchsize=32, shuffle=false);
+data = Flux.DataLoader(train_x |> to_device; batchsize=batch_size, shuffle=true);
+val_data = Flux.DataLoader(val_x |> to_device; batchsize=batch_size, shuffle=false);
 loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device)
 if isdefined(Main, :opt)
     println("loading optimiser state")
@@ -109,6 +110,7 @@ hyperparameters = Dict(
     "seed" => seed,
     "loss_type" => "$loss_type",
     "learning_rate" => learning_rate,
+    "batch_size" => batch_size,
     "optimiser" => "$(typeof(opt).name.wrapper)",
 )
 open(hyperparameters_path, "w") do f
