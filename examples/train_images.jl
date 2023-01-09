@@ -10,13 +10,14 @@ using ProgressMeter
 using DenoisingDiffusion
 using DenoisingDiffusion: train!, split_validation, load_opt_state!
 include("utilities.jl")
+include("load_images.jl")
 
 ### settings
 
 num_timesteps = 100
 seed = 2714
 dataset = :MNIST  # :MNIST or :Pokemon
-data_directory = "path\\to\\MNIST"
+data_directory = "path\\to\\data"
 output_directory = "outputs\\$(dataset)_" * Dates.format(now(), "yyyymmdd_HHMM")
 model_channels = 16
 learning_rate = 0.001
@@ -31,8 +32,9 @@ if dataset == :MNIST
     norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :))
     train_x, val_x = split_validation(MersenneTwister(seed), norm_data)
 elseif dataset == :Pokemon
-    data_path = joinpath(data_directory, "imgs_WHCN_48x48.bson")
-    data = BSON.load(data_path)[:imgs_WHCN]
+    data_path = joinpath(data_directory, "64x64")
+    println("loading images")
+    data = load_images(data_path)
     norm_data = normalize_neg_one_to_one(data)
     train_x, val_test_x = split_validation(MersenneTwister(seed), norm_data)
     n_val = floor(Int, size(val_test_x, 4) / 2)
