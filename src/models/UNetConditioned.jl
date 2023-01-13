@@ -55,6 +55,7 @@ function UNetConditioned(
     num_blocks_per_level::Int=1,
     block_groups::Int=8,
     num_attention_heads::Int=4,
+    middle_attention::Bool=true,
     combine_embeddings=vcat
 ) where {N}
     model_channels % block_groups == 0 ||
@@ -90,7 +91,8 @@ function UNetConditioned(
                 block_layer=block_layer,
                 block_groups=block_groups,
                 num_attention_heads=num_attention_heads,
-                num_blocks_per_level=num_blocks_per_level
+                num_blocks_per_level=num_blocks_per_level,
+                middle_attention=middle_attention,
             ),
             cat_on_channel_dim
         ),

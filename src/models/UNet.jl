@@ -51,7 +51,8 @@ function UNet(
     block_layer=ResBlock,
     num_blocks_per_level::Int=1,
     block_groups::Int=8,
-    num_attention_heads::Int=4
+    num_attention_heads::Int=4,
+    middle_attention::Bool=true,
 ) where {N}
     model_channels % block_groups == 0 ||
         error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
@@ -85,7 +86,8 @@ function UNet(
                 block_layer=block_layer,
                 block_groups=block_groups,
                 num_attention_heads=num_attention_heads,
-                num_blocks_per_level=num_blocks_per_level
+                num_blocks_per_level=num_blocks_per_level,
+                middle_attention=middle_attention,
             ),
             cat_on_channel_dim
         ),
@@ -95,17 +97,29 @@ function UNet(
     UNet(time_embed, chain, length(channel_multipliers) + 1)
 end
 
-function _add_unet_level(in_out::Vector{Tuple{Int,Int}}, emb_dim::Int, level::Int;
-    block_layer, num_blocks_per_level::Int, block_groups::Int, num_attention_heads::Int
+function _add_unet_level(
+    in_out::Vector{Tuple{Int,Int}}, 
+    emb_dim::Int, 
+    level::Int;
+    block_layer, 
+    num_blocks_per_level::Int, 
+    block_groups::Int, 
+    num_attention_heads::Int,
+    middle_attention::Bool=true,
 )
     if level > length(in_out)
         in_ch, out_ch = in_out[end]
-        keys_ = (Symbol("down_$level"), :middle_1, :middle_attention, :middle_2)
+        keys_ = middle_attention ? 
+            (Symbol("down_$level"), :middle_1, :middle_attention, :middle_2) : (Symbol("down_$level"), :middle)
+        attention_layers = middle_attention ? 
+            [
+                SkipConnection(MultiheadAttention(out_ch, nhead=num_attention_heads), +),
+                block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
+            ] :  []
         layers = (
             Conv((3, 3), in_ch => out_ch, stride=(1, 1), pad=(1, 1)),
             block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
-            SkipConnection(MultiheadAttention(out_ch, nhead=num_attention_heads), +),
-            block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
+            attention_layers...
         )
     else # recurse down a layer
         in_ch_prev, out_ch_prev = in_out[level-1]
@@ -134,7 +148,8 @@ function _add_unet_level(in_out::Vector{Tuple{Int,Int}}, emb_dim::Int, level::In
                     block_layer=block_layer,
                     block_groups=block_groups,
                     num_attention_heads=num_attention_heads,
-                    num_blocks_per_level=num_blocks_per_level
+                    num_blocks_per_level=num_blocks_per_level,
+                    middle_attention=middle_attention,
                 ),
                 cat_on_channel_dim
             ),
