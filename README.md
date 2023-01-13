@@ -4,6 +4,8 @@ A pure Julia implementation of denoising diffusion probabilistic models as popul
 
 For detailed examples please the notebooks at the corresponding project at [github.com/LiorSinai/DenoisingDiffusion-examples](https://github.com/LiorSinai/DenoisingDiffusion-examples). The notebooks were originally part of this repository but were removed using [git-filter-repo](https://github.com/newren/git-filter-repo) to make this repository more lightweight.
 
+For an explanation of the diffusion process and the code please see my blog posts at [liorsinai.github.io](https://liorsinai.github.io/coding/2022/12/03/denoising-diffusion-1-spiral.html).
+
 ## Overview 
 ### Unconditioned sampling
 <p align="center">
