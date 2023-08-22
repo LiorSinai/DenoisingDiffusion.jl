@@ -71,20 +71,37 @@ function update_history!(diffusion, history, loss, train_losses, val_data)
     println("")
 end
 
+"""
+    split_validation(rng, data[, labels]; frac=0.1)
+
+Splits `data` and `labels` into two datasets of size `1-frac` and `frac` respectively.
+
+Warning: this function duplicates `data`.
+"""
 function split_validation(rng::AbstractRNG, data::AbstractArray; frac=0.1)
     nsamples = size(data)[end]
     idxs = randperm(rng, nsamples)
     ntrain = nsamples - floor(Int, frac * nsamples)
-    data[:, :, :, idxs[1:ntrain]], data[:, :, :, idxs[(ntrain+1):end]]
+    inds_start = ntuple(Returns(:), ndims(data) - 1)
+    train_data = data[inds_start..., idxs[1:ntrain]]
+    val_data = data[inds_start..., idxs[(ntrain + 1):end]]
+    train_data, val_data
 end
 
-function split_validation(rng::AbstractRNG, data::AbstractArray, labels::AbstractVector{Int}; frac=0.1)
+function split_validation(rng::AbstractRNG, data::AbstractArray, labels::AbstractVecOrMat; frac=0.1)
     nsamples = size(data)[end]
     idxs = randperm(rng, nsamples)
     ntrain = nsamples - floor(Int, frac * nsamples)
-    train_data = (data[:, :, :, idxs[1:ntrain]], labels[idxs[1:ntrain]])
-    val_data = (data[:, :, :, idxs[(ntrain+1):end]], labels[idxs[(ntrain+1):end]])
-    train_data, val_data
+    inds_start = ntuple(Returns(:), ndims(data) - 1)
+    ## train data
+    idxs_train = idxs[1:ntrain]
+    train_data = data[inds_start..., idxs_train]
+    train_labels = ndims(labels) == 2 ? labels[:, idxs_train] : labels[idxs_train]
+    ## validation data
+    idxs_val = idxs[(ntrain + 1):end]
+    val_data = data[inds_start..., idxs_val]
+    val_labels = ndims(labels) == 2 ? labels[:, idxs_val] : labels[idxs_val]
+    (train_data, train_labels), (val_data, val_labels)
 end
 
 """

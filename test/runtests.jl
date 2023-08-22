@@ -6,4 +6,5 @@ using DenoisingDiffusion.Flux
     include("test_models.jl")
     include("convert_fixed_nested.jl")
     include("test_attention.jl")
+    include("split_validation.jl")
 end
