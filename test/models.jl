@@ -13,7 +13,7 @@ end
     @test_nowarn model(x, t)
 end
 
-@testset "UnetFixed" begin
+@testset "UNetFixed" begin
     model = UNetFixed(1, 8, 10; block_layer=ConvEmbed)
     x1 = rand(Float32, 28, 28, 1, 2)
     #x2 = rand(Float32, 27, 27, 1, 2); # doesn't work for odd numbers
@@ -31,7 +31,7 @@ end
     @test_nowarn model(x1, t1)
 end
 
-@testset "Unet" begin
+@testset "UNet" begin
     x = rand(Float32, 32, 32, 1, 2)
     t = rand(1:10, 2)
 
@@ -46,4 +46,24 @@ end
 
     model = UNet(1, 8, 10; block_layer=ConvEmbed, channel_multipliers=(1, 3, 3, 4))
     @test_nowarn model(x, t)
+end
+
+@testset "UNetConditioned" begin
+    x = rand(Float32, 32, 32, 1, 3)
+    t = rand(1:10, 3)
+    labels = rand(1:5, 3)
+
+    model = UNetConditioned(1, 8, 10; 
+        num_classes=5, 
+        block_layer=ConvEmbed, 
+        channel_multipliers=(1, 2)
+    )
+
+    @test_nowarn model(x, t)
+    output = model(x, t)
+    @test size(output) == size(x)
+
+    @test_nowarn model(x, t, labels)
+    output = model(x, t)
+    @test size(output) == size(x)
 end
