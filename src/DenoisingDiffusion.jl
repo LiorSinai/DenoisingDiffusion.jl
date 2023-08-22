@@ -11,8 +11,10 @@ using Random
 import NNlib: batched_mul
 
 include("GaussianDiffusion.jl")
+include("ddim.jl")
 include("train.jl")
 include("classifier_free_guidance.jl")
+include("ddim_classifier_free_guidance.jl")
 
 export GaussianDiffusion
 export linear_beta_schedule, cosine_beta_schedule
@@ -22,7 +24,6 @@ export ddim_sample, ddim_sample_loop
 
 include("models/embed.jl")
 export SinusoidalPositionEmbedding
-
 include("models/ConditionalChain.jl")
 export AbstractParallel, ConditionalChain, ConditionalSkipConnection
 include("models/blocks.jl")
@@ -35,6 +36,5 @@ export UNetFixed
 include("models/UNet.jl")
 include("models/UNetConditioned.jl")
 export UNet, UNetConditioned
-
 
 end # module
