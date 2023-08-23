@@ -11,10 +11,10 @@ using Random
 import NNlib: batched_mul
 
 include("GaussianDiffusion.jl")
+include("guidance.jl")
 include("ddim.jl")
+include("ddim_guidance.jl")
 include("train.jl")
-include("classifier_free_guidance.jl")
-include("ddim_classifier_free_guidance.jl")
 
 export GaussianDiffusion
 export linear_beta_schedule, cosine_beta_schedule
