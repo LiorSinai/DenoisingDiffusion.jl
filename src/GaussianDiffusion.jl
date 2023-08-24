@@ -156,7 +156,7 @@ function predict_start_from_noise(diffusion::GaussianDiffusion, x_t::AbstractArr
     coeff1 .* x_t - coeff2 .* noise
 end
 
-function model_predictions(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int})
+function denoise(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int})
     noise = diffusion.denoise_fn(x, timesteps)
     x_start = predict_start_from_noise(diffusion, x, timesteps, noise)
     x_start, noise
@@ -172,7 +172,7 @@ function p_sample(
     diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray;
     clip_denoised::Bool=true, add_noise::Bool=true
 )
-    x_start, pred_noise = model_predictions(diffusion, x, timesteps)
+    x_start, pred_noise = denoise(diffusion, x, timesteps)
     if clip_denoised
         clamp!(x_start, -1, 1)
     end

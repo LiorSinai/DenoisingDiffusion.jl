@@ -148,9 +148,9 @@ function p_sample(
     guidance_scale::AbstractFloat=1.0f0
     )
     if guidance_scale == 1.0f0
-        x_start, pred_noise = model_predictions(diffusion, x, timesteps, labels)
+        x_start, pred_noise = denoise(diffusion, x, timesteps, labels)
     else
-        x_start, pred_noise = _classifier_free_guidance(
+        x_start, pred_noise = classifier_free_guidance(
             diffusion, x, timesteps, labels; guidance_scale=guidance_scale
         )
     end
@@ -165,7 +165,7 @@ function p_sample(
     x_prev, x_start
 end
 
-function model_predictions(
+function denoise(
     diffusion::GaussianDiffusion,
     x::AbstractArray,
     timesteps::AbstractVector{Int},
@@ -176,7 +176,7 @@ function model_predictions(
     x_start, noise
 end
 
-function _classifier_free_guidance(
+function classifier_free_guidance(
     diffusion::GaussianDiffusion,
     x::AbstractArray,
     timesteps::AbstractVector{Int},
