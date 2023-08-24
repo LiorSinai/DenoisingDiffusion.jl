@@ -194,10 +194,10 @@ See `p_sample_loop_all` for a version which returns values for all timesteps.
 function p_sample_loop(diffusion::GaussianDiffusion, shape::NTuple; clip_denoised::Bool=true, to_device=cpu)
     T = eltype(eltype(diffusion))
     x = randn(T, shape) |> to_device
-    @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
-        timesteps = fill(i, shape[end]) |> to_device
+    @showprogress "Sampling..." for t in diffusion.num_timesteps:-1:1
+        timesteps = fill(t, shape[end]) |> to_device
         noise = randn(T, size(x)) |> to_device
-        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(i != 1))
+        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(t != 1))
     end
     x
 end
@@ -219,10 +219,10 @@ function p_sample_loop_all(diffusion::GaussianDiffusion, shape::NTuple; clip_den
     x_all = Array{T}(undef, size(x)..., 0) |> to_device
     x_start_all = Array{T}(undef, size(x)..., 0) |> to_device
     tdim = ndims(x_all)
-    @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
-        timesteps = fill(i, shape[end]) |> to_device
+    @showprogress "Sampling..." for t in diffusion.num_timesteps:-1:1
+        timesteps = fill(t, shape[end]) |> to_device
         noise = randn(T, size(x)) |> to_device
-        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(i != 1))
+        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(t != 1))
         x_all = cat(x_all, x, dims=tdim)
         x_start_all = cat(x_start_all, x_start, dims=tdim)
     end
