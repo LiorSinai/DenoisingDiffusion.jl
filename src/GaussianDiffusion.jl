@@ -28,7 +28,7 @@ end
 eltype(::Type{<:GaussianDiffusion{V}}) where {V} = V
 
 Flux.@functor GaussianDiffusion
-Flux.trainable(g::GaussianDiffusion) = (g.denoise_fn,)
+Flux.trainable(g::GaussianDiffusion) = (; g.denoise_fn)
 
 function Base.show(io::IO, diffusion::GaussianDiffusion)
     V = typeof(diffusion).parameters[1]
