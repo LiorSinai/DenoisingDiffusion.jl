@@ -15,7 +15,7 @@ include("utilities.jl")
 num_timesteps = 100
 seed = 2714
 dataset = :MNIST
-data_directory = "C:\\Users\\sinai\\Documents\\Projects\\datasets\\MNIST"
+data_directory = "path\\to\\data"
 #output_directory = joinpath("outputs", "$(dataset)_" * Dates.format(now(), "yyyymmdd_HHMM"))
 output_directory = "outputs\\MNIST_20230826_1426"
 model_channels = 16
