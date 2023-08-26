@@ -61,7 +61,7 @@ model = UNet(in_channels, model_channels, num_timesteps;
 βs = cosine_beta_schedule(num_timesteps, 0.008)
 diffusion = GaussianDiffusion(Vector{Float32}, βs, data_shape, model)
 ## load
-# BSON.@load "outputs\\MNIST_20220814_2214\\diffusion_opt.bson" diffusion opt
+# BSON.@load "outputs\\Pokemon_20230826_1615\\diffusion_opt.bson" diffusion opt_state
 
 display(diffusion.denoise_fn)
 println("")
