@@ -13,7 +13,7 @@ include("LeNet5.jl")
 
 #### settings
 seed = 2714
-data_directory = "C:\\Users\\sinai\\Documents\\Projects\\datasets\\MNIST"
+data_directory = "path\\to\\data"
 output_dir = "outputs\\LeNet5"
 mkpath(output_dir)
 
