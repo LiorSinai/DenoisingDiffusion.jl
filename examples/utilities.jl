@@ -1,7 +1,7 @@
 using StatsBase
 using LinearAlgebra
 using Images
-using Optimisers
+using Optimisers: Leaf
 
 ## model sizes 
 
@@ -62,4 +62,4 @@ function extract_rule_from_tree(tree::Union{NamedTuple, Tuple})
     end
 end
 
-extract_rule_from_tree(leaf::Optimisers.Leaf) = leaf.rule
+extract_rule_from_tree(leaf::Leaf) = leaf.rule
