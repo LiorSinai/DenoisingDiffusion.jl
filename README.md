@@ -8,16 +8,23 @@ For an explanation of the diffusion process and the code please see my blog post
 
 ## Overview 
 ### Unconditioned sampling
+
+<p align="center">
+  <img src="images/ddpm.png"/>
+</p>
+
+Denoising diffusion starts from an image of pure noise and gradually removes this noise across many time steps, resulting in an image representative of the training data.
+At each time step a model predicts the noise to be removed in order to reach the final image `x_0` on the final time step `t=0` from the current time step `t`.
+This is then used to denoise the image by one time step and a better estimate of `x_0` is made on the next time step.
+
 <p align="center">
   <img src="images/numbers_reverse.gif" width="45%" style="padding:5px"/>
   <img src="images/numbers_estimate.gif" width="45%"  style="padding:5px"/> 
-  <p style="text-align:center">Reverse process (left) and final image estimate (right). These coincide on the final time step.</p>
+  <p style="text-align:center">Reverse process (left) and final image estimate (right). <code>i=T-t</code></p>
 </p>
 
-Denoising diffusion starts from an image of pure noise and gradually removes this noise across many time steps, resulting in a natural looking image.
-At each time step a model predicts the noise to be removed in order to reach the final image on the final time step from the current time step.
-This allows an estimate of the final image to be created, which is updated at every time step. 
 The above image shows this process with a trained model for number generation.
+The final image estimates gradually improve throughout the process and coincides with the actual image on the final time step.
 
 ### Conditioned sampling with classifier free guidance
 <p align="center">
@@ -33,26 +40,71 @@ The noise that is removed is then given by a weighted combination of the two:
 ```
 noise = ϵ_uncond + guidance_scale * (ϵ_cond - ϵ_uncond)
 ```
-Where `guidance_scale >= 1`. The difference `(ϵ_cond - ϵ_uncond)` represents a very rough gradient.
+Where `guidance_scale >= 1`. The difference `(ϵ_cond - ϵ_uncond)` represents a rough gradient.
 
 The original paper uses `ϵ_cond + guidance_scale * (ϵ_cond - ϵ_uncond)` but using the baseline as `ϵ_uncond` instead allows it to be cancelled and skipped for the special case of `guidance_scale = 1`.
 
 ## Module 
 
 The main export is the `GaussianDiffusion` struct and associated functions.
-Various models and building blocks are included. 
-The models includes a flexible `ConditionalChain` based on `Flux.Chain`. It can handle multiple inputs where the first input is given priority.
-Two versions of UNets (convolutional autoencoder) are available, `UNet` and `UNetFixed`.
+Various models and layers are included. 
 
- A `UNet` model made to the same specifications as `UNetFixed` is 100% equivalent. 
+### Layers
 
-`UNet` is flexible and can have an arbitrary number of downsample/upsample pairs (more than five is not advisable).
-It is based on nested skip connections.
-`UNetFixed` is a linear implementation of the same model. 
-`UNetFixed` has three downsample/upsample pairs and three middle layers with a total of 16 layers. For the default configuration `UNetFixed(1, 8, 100)` will have approximately 150,000 parameters. 
-About 50% of these parameters are in the middle layer - 24% in the attention layer alone.
+Skip connection:
+- `ConditionalSkipConnection`: a skip connection which can pass multiple arguments to its layers.
 
-For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
+Embedding:
+- `SinusoidalPositionEmbedding`: a non-trainable matrix of position embeddings based on sine and cosine waves.
+
+Convolution:
+- `ConvEmbed`: calculate a convolution on the first input and add embeddings from the second input.
+- `ResBlock`: A `ConvEmbed` block followed by convolution with a skip connection past both.
+- `MultiheadAttention`: multiheaded attention with a convolution layer which calculates the key, query and value.
+
+### Models
+
+- `ConditionalChain`: based on `Flux.Chain`. It can handle multiple inputs where the first input is given priority. Uses
+- UNet: Two versions of UNets (convolutional autoencoder) are available, `UNet` and `UNetFixed`.
+  - `UNet` is flexible and can have an arbitrary number of downsample/upsample pairs (more than five is not advisable). It is based on nested skip connections.
+  - `UNetFixed` has a linear implementation. 
+It has three downsample/upsample pairs and three middle layers with a total of 16 layers. The default configuration `UNetFixed(1, 8, 100)` will have approximately 150,000 parameters. 
+  - A `UNet` model made to the same specifications as `UNetFixed` is 100% equivalent. 
+  - About 50% of these parameters are in the middle layer - 24% in the attention layer alone.
+  - For both models, every doubling of the `model_channels` will approximately quadruple the number of parameters because the convolution layer size is proportional to the square of the dimension.
+
+### GPU compatibility
+
+This repository is fully compatible with GPU training and inference using Flux. 
+
+An important caveat is that all generated matrices needs to be on the same device as the model.
+For example, in each step of the reverse process (denoising) noise is generated and added to provide diversity in the results.
+In the forward process (diffusion) noise is generated to make the sample more noisy.
+This noise is generated on the CPU but if the model is on the GPU it needs to be transferred there.
+
+The same is true of functions that automatically generate the `timesteps` vector.
+
+This repository requires the user to manually specify the device with the `to_device` key word argument. It can either be `Flux.cpu` or `Flux.gpu`. The default is `Flux.cpu`.
+
+Future work: automatically determine if the model is on the GPU.
+
+## Examples
+
+To run the examples: 
+```
+julia  --threads auto examples\\train_images.jl
+```
+
+Or start the Julia REPL and run it interactively.
+
+There are three use cases:
+- Spiral (2 values per data point).
+- Numbers (28&times;28=784 values per data point.)
+- Pokemon (48&times;48&times;3=6912 values per data point.)
+
+The spiral use case requires approximately 1,000 parameters. The number generation requires at least 100 times this, and the Pokemon possibly more. So far, satisfying results for the Pokemon have not been achieved.
+See however [This Pokémon Does Not Exist](https://huggingface.co/spaces/ronvolutional/ai-pokemon-card)
+for an example trained on 1.3 billion parameter model.
 
 ## Fréchet LeNet Distances (FLD)
 
@@ -94,24 +146,6 @@ Optionally, tests can be run with:
 ```
 
 This repository uses FastAi's [nbdev](https://nbdev.fast.ai/tutorials/git_friendly_jupyter.html) to manage the Jupyter Notebooks for Git. This requires a Python installation of nbdev. To avoid using it, follow the steps in .gitconfig.
-
-## Examples
-
-To run the examples: 
-```
-julia examples\\train_images.jl --threads auto
-```
-
-Or start the Julia REPL and run it interactively.
-
-There are three use cases:
-- Spiral (2 values per data point).
-- Numbers (28&times;28=784 values per data point.)
-- Pokemon (48&times;48&times;3=6912 values per data point.)
-
-The spiral use case requires approximately 1,000 parameters. The number generation requires at least 100 times this, and the Pokemon possibly more. So far, satisfying results for the Pokemon have not been achieved.
-See however [This Pokémon Does Not Exist](https://huggingface.co/spaces/ronvolutional/ai-pokemon-card)
-for an example trained on 1.3 billion parameter model.
 
 ## Task list
 
