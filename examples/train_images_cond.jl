@@ -151,12 +151,14 @@ canvas_train = plot(
     ylims=(0, Inf),
     )
 plot!(canvas_train, 1:length(history["val_loss"]), history["val_loss"], label="val_loss")
+savefig(canvas_train, joinpath(output_directory, "history.png"))
 display(canvas_train)
 
 X0_all = p_sample_loop(diffusion, collect(1:11); guidance_scale=2.0f0, to_device=to_device);
 X0_all = X0_all |> cpu;
 imgs_all = convert2image(trainset, X0_all[:, :, 1, :]);
 canvas_samples = plot([plot(imgs_all[:, :, i], title="digit=$(i-2)") for i in 1:11]..., ticks=nothing)
+savefig(canvas_samples, joinpath(output_directory, "samples.png"))
 display(canvas_samples)
 
 for label in 1:11

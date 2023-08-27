@@ -31,15 +31,10 @@ if dataset == :MNIST
     norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :))
     train_x, val_x = split_validation(MersenneTwister(seed), norm_data)
 elseif dataset == :Pokemon
-    data_path = joinpath(data_directory, "64x64")
     println("loading images")
-    data = load_images(data_path)
+    data = load_images(data_directory)
     norm_data = normalize_neg_one_to_one(data)
-    train_x, val_test_x = split_validation(MersenneTwister(seed), norm_data)
-    n_val = floor(Int, size(val_test_x, 4) / 2)
-    n_train = size(train_x, 4)
-    val_x = val_test_x[:, :, :, 1:n_val]
-    test_x = val_test_x[:, :, :, (n_val+1):end]
+    train_x, val_x = split_validation(MersenneTwister(seed), norm_data)
 else
     throw("$dataset not supported")
 end
@@ -155,6 +150,7 @@ canvas_train = plot(
     ylims=(0, Inf),
     )
 plot!(canvas_train, 1:length(history["val_loss"]), history["val_loss"], label="val_loss")
+savefig(canvas_train, joinpath(output_directory, "history.png"))
 display(canvas_train)
 
 X0 = p_sample_loop(diffusion, 12; to_device=to_device)
@@ -170,6 +166,7 @@ elseif dataset == :Pokemon
 end
 
 canvas_samples = plot([plot(imgs[:, :, i]) for i in 1:12]...)
+savefig(canvas_samples, joinpath(output_directory, "samples.png"))
 display(canvas_samples)
 
 println("press enter to finish")
