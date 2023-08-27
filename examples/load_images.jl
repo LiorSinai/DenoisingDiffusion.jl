@@ -2,7 +2,7 @@ using Flux: batch
 using ProgressMeter
 using Images
 
-function load_images(directory)
+function load_images(directory::AbstractString)
     filenames = readdir(directory);
     get_pos(filename::String) = parse(Int, match(r"\d+", filename).match)
     sort!(filenames, lt=(s1, s2)-> get_pos(s1) < get_pos(s2));
