@@ -17,7 +17,7 @@ function ddim_sample(
     η::Float32=1.0f0,
     add_noise::Bool=true
     )
-    x_start, pred_noise = model_predictions(diffusion, x, timesteps)
+    x_start, pred_noise = denoise(diffusion, x, timesteps)
     if clip_denoised
         clamp!(x_start, -1, 1)
     end

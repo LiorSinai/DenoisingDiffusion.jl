@@ -5,46 +5,38 @@ using Flux.Zygote: sensitivity, pullback
 using Printf: @sprintf
 using ProgressMeter
 
-function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser, val_data;
+function train!(loss, model, data::DataLoader, opt_state, val_data;
     num_epochs::Int=10,
     save_after_epoch::Bool=false,
     save_dir::String=""
-)
+    )
     history = Dict(
-        "epoch_size" => count_observations(data),
-        "train_loss" => Float64[],
+        "epoch_size" => length(data),
+        "mean_batch_loss" => Float64[],
         "val_loss" => Float64[],
         "batch_size" => get_batch_size(data),
     )
-    log_path = joinpath(save_dir, "logs.txt")
     for epoch = 1:num_epochs
-        losses = Vector{Float64}()
+        print(stderr, "") # clear stderr for Progress
         progress = Progress(length(data); desc="epoch $epoch/$num_epochs")
-        params = Flux.params(diffusion) # keep here in case of data movement between devices (this might happen during saving)
+        total_loss = 0.0
         for (idx, x) in enumerate(data)
-            batch_loss, back = pullback(params) do
-                loss(diffusion, x)
+            batch_loss, grads = Flux.withgradient(model) do m
+                loss(m, x)
             end
-            grads = back(sensitivity(batch_loss))
-            Flux.update!(opt, params, grads)
-            push!(losses, batch_loss)
+            total_loss += batch_loss
             ProgressMeter.next!(progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))])
-            open(log_path, "a") do f
-                write(f, "$epoch-$idx $batch_loss \n")
-            end
+            Flux.update!(opt_state, model, grads[1])
         end
         if save_after_epoch
-            path = joinpath(save_dir, "diffusion_epoch=$(epoch).bson")
-            let diffusion = cpu(diffusion) # keep main diffusion on device
-                BSON.bson(path, Dict(:diffusion => diffusion))
+            path = joinpath(save_dir, "model_epoch=$(epoch).bson")
+            let model = cpu(model) # keep main model on device
+                BSON.bson(path, Dict(:model => model))
             end
         end
-        update_history!(diffusion, history, loss, losses, val_data)
-        open(log_path, "a") do f
-            train_loss_epoch = history["train_loss"][end]
-            val_loss_epoch = history["val_loss"][end]
-            write(f, "epoch-$epoch $train_loss_epoch $val_loss_epoch \n")
-        end
+        push!(history["mean_batch_loss"], total_loss / length(data))
+        @printf("mean batch loss: %.5f ; ", history["mean_batch_loss"][end])
+        update_history!(model, history, loss, val_data)
     end
     history
 end
@@ -57,16 +49,13 @@ count_observations(data) = length(data)
 get_batch_size(data::D) where {D<:DataLoader} = data.batchsize
 get_batch_size(data) = 1
 
-function update_history!(diffusion, history, loss, train_losses, val_data)
-    push!(history["train_loss"], sum(train_losses) / length(train_losses))
-
+function update_history!(model, history, loss, val_data)
     val_loss = 0.0
     for x in val_data
-        val_loss += loss(diffusion, x)
+        val_loss += loss(model, x)
     end
-    push!(history["val_loss"], val_loss / length(val_data))
-
-    @printf("train loss: %.5f ; ", history["train_loss"][end])
+    val_loss /= length(val_data)
+    push!(history["val_loss"], val_loss)
     @printf("val loss: %.5f", history["val_loss"][end])
     println("")
 end
@@ -105,14 +94,13 @@ function split_validation(rng::AbstractRNG, data::AbstractArray, labels::Abstrac
 end
 
 """
-    batched_metric(f, data, g=identity)
+    batched_metric(g, f, data::DataLoader, g=identity)
 
 Caculates `f(g(x), y)` for each `(x, y)` in data and returns a weighted sum by batch size.
 If `f` takes the mean this will recover the full sample mean.
 Reduces memory load for `f` and `g`. 
-To automatically batch data, use `Flux.DataLoader`.
 """
-function batched_metric(f, data::DataLoader, g=identity)
+function batched_metric(g, f, data::DataLoader)
     result = 0.0
     num_observations = 0
     for (x, y) in data
@@ -122,38 +110,4 @@ function batched_metric(f, data::DataLoader, g=identity)
         num_observations += batch_size
     end
     result / num_observations
-end
-
-"""
-    load_opt_state!(opt, params_src, params_dest; to_device=cpu)
-
-The optimiser state and the model are tightly coupled. 
-This is problematic for the case where data is moved between a CPU and a GPU.
-A careful sequence needs to be followed with serialising and deserialising so that they stay in sync.
-
-Sequence to save:
-```
-params_gpu = Flux.params(model);
-model_cpu = cpu(model)
-load_opt_state!(opt, params_gpu, Flux.params(model_cpu), to_device=cpu)
-BSON.bson(path, Dict(:model => model_cpu, :opt => opt))
-```
-
-Sequence to load:
-```               
-BSON.@load path model opt
-params_cpu = Flux.params(model);
-model = gpu(model)
-load_opt_state!(opt, params_cpu, Flux.params(model), to_device=gpu)
-```
-
-See https://discourse.julialang.org/t/deepcopy-flux-model/72930
-"""
-function load_opt_state!(opt::Adam, params_src, params_dest; to_device=cpu)
-    state = IdDict()
-    for (p_dest, p_src) in zip(params_dest, params_src)
-        mt, vt, βp = opt.state[p_src]
-        state[p_dest] = (to_device(mt), to_device(vt), βp,)
-    end
-    opt.state = state
 end

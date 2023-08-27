@@ -22,9 +22,9 @@ function ddim_sample(
     guidance_scale::AbstractFloat=1.0f0
     )
     if guidance_scale == 1.0f0
-        x_start, pred_noise = model_predictions(diffusion, x, timesteps, labels)
+        x_start, pred_noise = denoise(diffusion, x, timesteps, labels)
     else
-        x_start, pred_noise = _classifier_free_guidance(
+        x_start, pred_noise = classifier_free_guidance(
             diffusion, x, timesteps, labels; guidance_scale=guidance_scale
         )
     end

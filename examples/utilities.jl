@@ -1,6 +1,7 @@
 using StatsBase
 using LinearAlgebra
 using Images
+using Optimisers: Leaf
 
 ## model sizes 
 
@@ -49,3 +50,16 @@ function img_WH_to_gray(img_WH::AbstractArray{T,N}) where {T,N}
     img = Images.colorview(Images.Gray, img_HW)
     img
 end
+
+## optimisers
+
+function extract_rule_from_tree(tree::Union{NamedTuple, Tuple})
+    for state in tree
+        rule = extract_rule_from_tree(state)
+        if !isnothing(rule)
+            return rule
+        end
+    end
+end
+
+extract_rule_from_tree(leaf::Leaf) = leaf.rule

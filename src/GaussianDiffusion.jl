@@ -28,7 +28,7 @@ end
 eltype(::Type{<:GaussianDiffusion{V}}) where {V} = V
 
 Flux.@functor GaussianDiffusion
-Flux.trainable(g::GaussianDiffusion) = (g.denoise_fn,)
+Flux.trainable(g::GaussianDiffusion) = (; g.denoise_fn)
 
 function Base.show(io::IO, diffusion::GaussianDiffusion)
     V = typeof(diffusion).parameters[1]
@@ -156,7 +156,7 @@ function predict_start_from_noise(diffusion::GaussianDiffusion, x_t::AbstractArr
     coeff1 .* x_t - coeff2 .* noise
 end
 
-function model_predictions(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int})
+function denoise(diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int})
     noise = diffusion.denoise_fn(x, timesteps)
     x_start = predict_start_from_noise(diffusion, x, timesteps, noise)
     x_start, noise
@@ -172,7 +172,7 @@ function p_sample(
     diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray;
     clip_denoised::Bool=true, add_noise::Bool=true
 )
-    x_start, pred_noise = model_predictions(diffusion, x, timesteps)
+    x_start, pred_noise = denoise(diffusion, x, timesteps)
     if clip_denoised
         clamp!(x_start, -1, 1)
     end
@@ -194,10 +194,10 @@ See `p_sample_loop_all` for a version which returns values for all timesteps.
 function p_sample_loop(diffusion::GaussianDiffusion, shape::NTuple; clip_denoised::Bool=true, to_device=cpu)
     T = eltype(eltype(diffusion))
     x = randn(T, shape) |> to_device
-    @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
-        timesteps = fill(i, shape[end]) |> to_device
+    @showprogress "Sampling..." for t in diffusion.num_timesteps:-1:1
+        timesteps = fill(t, shape[end]) |> to_device
         noise = randn(T, size(x)) |> to_device
-        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(i != 1))
+        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(t != 1))
     end
     x
 end
@@ -219,10 +219,10 @@ function p_sample_loop_all(diffusion::GaussianDiffusion, shape::NTuple; clip_den
     x_all = Array{T}(undef, size(x)..., 0) |> to_device
     x_start_all = Array{T}(undef, size(x)..., 0) |> to_device
     tdim = ndims(x_all)
-    @showprogress "Sampling..." for i in diffusion.num_timesteps:-1:1
-        timesteps = fill(i, shape[end]) |> to_device
+    @showprogress "Sampling..." for t in diffusion.num_timesteps:-1:1
+        timesteps = fill(t, shape[end]) |> to_device
         noise = randn(T, size(x)) |> to_device
-        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(i != 1))
+        x, x_start = p_sample(diffusion, x, timesteps, noise; clip_denoised=clip_denoised, add_noise=(t != 1))
         x_all = cat(x_all, x, dims=tdim)
         x_start_all = cat(x_start_all, x_start, dims=tdim)
     end

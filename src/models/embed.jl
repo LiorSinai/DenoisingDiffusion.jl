@@ -14,7 +14,7 @@ struct SinusoidalPositionEmbedding{W<:AbstractArray}
 end
 
 Flux.@functor SinusoidalPositionEmbedding
-Flux.trainable(emb::SinusoidalPositionEmbedding) = ()
+Flux.trainable(emb::SinusoidalPositionEmbedding) = (;) # not trainable
 
 function SinusoidalPositionEmbedding(in::Int, out::Int)
     W = make_positional_embedding(out, in)
