@@ -14,6 +14,10 @@ Flux.@functor MultiheadAttention (to_qkv, to_out,)
     MultiheadAttention(nhead::Int, dim_model::Int, dim_head::Int)
 
 Multihead dot product attention Layer.
+
+The attention heads are split across channels `C` whereas in a text transformers they are split across the embedding layer. 
+The input here is `W × H × C × B` => `WH × C × B` compared to the usual `dm × N × B` input of a text transformer. 
+Here the second dimension is split: `C=nhead*dim_head` whereas in a text transformer, the first dimension is usually split `dm=nhead*dim_head`.
 """
 function MultiheadAttention(dim_model::Int, dim_head::Int; nhead::Int=4)
     dim_hidden = dim_head * nhead

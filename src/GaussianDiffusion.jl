@@ -242,7 +242,6 @@ Sample from ``q(x_t | x_0)`` and return the loss for the predicted noise.
 function p_losses(diffusion::GaussianDiffusion, loss, x_start::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray)
     x = q_sample(diffusion, x_start, timesteps, noise)
     model_out = diffusion.denoise_fn(x, timesteps)
-
     loss(model_out, noise)
 end
 

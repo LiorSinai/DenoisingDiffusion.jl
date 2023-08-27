@@ -53,7 +53,7 @@ function UNet(
     block_groups::Int=8,
     num_attention_heads::Int=4,
     middle_attention::Bool=true,
-) where {N}
+    ) where {N}
     model_channels % block_groups == 0 ||
         error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
 
@@ -106,7 +106,7 @@ function _add_unet_level(
     block_groups::Int, 
     num_attention_heads::Int,
     middle_attention::Bool=true,
-)
+    )
     if level > length(in_out)
         in_ch, out_ch = in_out[end]
         keys_ = middle_attention ? 

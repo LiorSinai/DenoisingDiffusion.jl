@@ -57,7 +57,7 @@ function UNetConditioned(
     num_attention_heads::Int=4,
     middle_attention::Bool=true,
     combine_embeddings=vcat
-) where {N}
+    ) where {N}
     model_channels % block_groups == 0 ||
         error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
 
