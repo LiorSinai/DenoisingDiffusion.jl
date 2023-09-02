@@ -3,11 +3,23 @@ using Flux: _channels_in, _channels_out, _big_finale, _layer_show
 
 """
     UNetFixed(in_channels, model_channels, num_timesteps; 
-        block_layer=ResBlock, block_groups=8,
+        block_layer=ResBlock,
+        block_groups=8,
+        num_attention_heads=4,
     )
 
 A 14 layer convolutional autoencoder with time embeddings (each ResBlock and upsample has 2 layers).
 Each downsample halves the image dimensions so it should only be used on even sized images.
+
+The model grows in size with `model_channels^2`.
+
+Key word arguments:
+- `channel_multipliers`: the multiplification factor on `model_channels` on each down layer.
+- `block_layer`: the main layer for down and up blocks.
+- `block_groups`: a parameter for the `block_layer` for group normalization.
+- `num_attention_heads`: number of attention heads for multi-head attention. Should evenly divide the model channels at the this point.
+    That will be `model_channel*channel_multipliers[end]` in the middle.
+
 ```
           +----+     +-----+     +----------+     +-----+     +----------+     +-----+     +----+
 downs     |Conv| --> |Block| --> |Downsample| --> |Block| --> |Downsample| --> |Block| --> |Conv|

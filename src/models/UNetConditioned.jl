@@ -3,13 +3,31 @@ using Flux: _big_finale, _layer_show
 
 """
     UNetConditioned(in_channels, model_channels, num_timesteps; 
-        channel_multipliers=(1, 2, 4), block_layer=ResBlock, block_groups=8, 
-        num_attention_heads=4, combine_embeddings=vcat, num_classes=1, 
+        channel_multipliers=(1, 2, 4),
+        block_layer=ResBlock,
+        block_groups=8, 
+        middle_attention=true,
+        num_attention_heads=4,
+        combine_embeddings=vcat,
+        num_classes=1, 
     )
 
 A convolutional autoencoder with time embeddings, class embeddings and skip connections.
 The default configuration has 17 layers and skip connections (each ResBlock and upsample has 2 layers).
 Each downsample halves the image dimensions so it should only be used on even sized images.
+
+The model grows in size with `model_channels^2`.
+
+Key word arguments:
+- `channel_multipliers`: the multiplification factor on `model_channels` on each down layer.
+- `block_layer`: the main layer for down and up blocks.
+- `block_groups`: a parameter for the `block_layer` for group normalization.
+- `middle_attention`: have one attention layer in the middle of the model. This is a large and expensive layer.
+- `num_attention_heads`: number of attention heads for multi-head attention. Should evenly divide the model channels at the this point.
+    That will be `model_channel*channel_multipliers[end]` in the middle.
+- `combine_embeddings`: how to combine time and class embeddings. Recommendations are `vcat` or `.+` or `.*`.
+- `num_classes`: number of class embeddings.
+
 ```
 +-----+     +-------+     +-------+     +-----+     +------+
 |:init| --> |:down_1| --> |:skip_1| --> |:up_1| --> |:final|
