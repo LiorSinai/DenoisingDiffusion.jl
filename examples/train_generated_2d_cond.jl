@@ -128,13 +128,14 @@ println("saved history to $history_path")
 diffusion = diffusion |> cpu
 
 canvas_train = plot(
-    1:length(history["mean_batch_loss"]), history["mean_batch_loss"], label="mean batch_loss",
+    1:length(history["mean_batch_loss"]), history["mean_batch_loss"], label="mean batch loss",
     xlabel="epoch",
     ylabel="loss",
     legend=:right, # :best, :right
     ylims=(0, Inf),
     )
-plot!(canvas_train, 1:length(history["val_loss"]), history["val_loss"], label="val_loss")
+plot!(canvas_train, 1:length(history["val_loss"]), history["val_loss"], label="validation loss")
+savefig(canvas_train, joinpath(directory, "history.png"))
 display(canvas_train)
 
 canvases = []
@@ -147,8 +148,9 @@ for label in 1:4
     )
     push!(canvases, p0)
 end
-p = plot(canvases...)
-display(p)
+canvas_samples = plot(canvases...)
+savefig(canvas_samples, joinpath(directory, "samples.png"))
+display(canvas_samples)
 
 println("press enter to finish")
 readline()
