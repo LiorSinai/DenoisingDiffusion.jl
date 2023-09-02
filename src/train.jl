@@ -1,7 +1,5 @@
 
 using Flux: update!, DataLoader
-using Flux.Optimise: AbstractOptimiser
-using Flux.Zygote: sensitivity, pullback
 using Printf: @sprintf
 using ProgressMeter
 
