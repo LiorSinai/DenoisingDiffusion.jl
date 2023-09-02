@@ -1,5 +1,3 @@
-using Flux.CUDA
-
 """
     GaussianDiffusion(V::DataType, βs, data_shape, denoise_fn)
 
@@ -112,20 +110,34 @@ end
 
 The forward process ``q(x_t | x_0)``. Diffuse the data for a given number of diffusion steps.
 """
-function q_sample(diffusion::GaussianDiffusion, x_start::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray)
+function q_sample(
+    diffusion::GaussianDiffusion, 
+    x_start::AbstractArray, 
+    timesteps::AbstractVector{Int}, 
+    noise::AbstractArray
+    )
     coeff1 = _extract(diffusion.sqrt_α_cumprods, timesteps, size(x_start))
     coeff2 = _extract(diffusion.sqrt_one_minus_α_cumprods, timesteps, size(x_start))
     coeff1 .* x_start + coeff2 .* noise
 end
 
-function q_sample(diffusion::GaussianDiffusion, x_start::AbstractArray, timesteps::AbstractVector{Int}; to_device=cpu)
+function q_sample(
+    diffusion::GaussianDiffusion,
+    x_start::AbstractArray, 
+    timesteps::AbstractVector{Int}
+    ;to_device=cpu
+    )
     T = eltype(eltype(diffusion))
     noise = randn(T, size(x_start)) |> to_device
     timesteps = timesteps |> to_device
     q_sample(diffusion, x_start, timesteps, noise)
 end
 
-function q_sample(diffusion::GaussianDiffusion, x_start::AbstractArray{T,N}, timestep::Int; to_device=cpu) where {T,N}
+function q_sample(
+    diffusion::GaussianDiffusion,
+    x_start::AbstractArray{T,N},
+    timestep::Int; to_device=cpu
+    ) where {T,N}
     timesteps = fill(timestep, size(x_start, N)) |> to_device
     q_sample(diffusion, x_start, timesteps; to_device=to_device)
 end
@@ -171,7 +183,7 @@ The reverse process ``p(x_{t-1} | x_t, t)``. Denoise the data by one timestep.
 function p_sample(
     diffusion::GaussianDiffusion, x::AbstractArray, timesteps::AbstractVector{Int}, noise::AbstractArray;
     clip_denoised::Bool=true, add_noise::Bool=true
-)
+    )
     x_start, pred_noise = denoise(diffusion, x, timesteps)
     if clip_denoised
         clamp!(x_start, -1, 1)
