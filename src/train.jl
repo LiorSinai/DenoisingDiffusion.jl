@@ -6,21 +6,28 @@ using ProgressMeter
 function train!(loss, model, data::DataLoader, opt_state, val_data;
     num_epochs::Int=10,
     save_after_epoch::Bool=false,
-    save_dir::String=""
+    save_dir::String="",
+    prob_uncond::Float64=0.0,
     )
     history = Dict(
         "epoch_size" => length(data),
         "mean_batch_loss" => Float64[],
         "val_loss" => Float64[],
-        "batch_size" => get_batch_size(data),
+        "batch_size" => data.batchsize,
     )
     for epoch = 1:num_epochs
         print(stderr, "") # clear stderr for Progress
         progress = Progress(length(data); desc="epoch $epoch/$num_epochs")
         total_loss = 0.0
         for (idx, x) in enumerate(data)
+            if (x isa Tuple)
+                y = randomly_set_unconditioned(x[2]; prob_uncond=prob_uncond) 
+                x_splat = (x[1], y)
+            else
+                x_splat = (x,)
+            end
             batch_loss, grads = Flux.withgradient(model) do m
-                loss(m, x)
+                loss(m, x_splat...)
             end
             total_loss += batch_loss
             ProgressMeter.next!(progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))])
@@ -34,28 +41,44 @@ function train!(loss, model, data::DataLoader, opt_state, val_data;
         end
         push!(history["mean_batch_loss"], total_loss / length(data))
         @printf("mean batch loss: %.5f ; ", history["mean_batch_loss"][end])
-        update_history!(model, history, loss, val_data)
+        update_history!(model, history, loss, val_data; prob_uncond=prob_uncond)
     end
     history
 end
 
-count_observations(data::D) where {D<:DataLoader} = count_observations(data.data)
-count_observations(data::Tuple) = count_observations(data[1])
-count_observations(data::AbstractArray{<:Any,N}) where {N} = size(data, N)
-count_observations(data) = length(data)
-
-get_batch_size(data::D) where {D<:DataLoader} = data.batchsize
-get_batch_size(data) = 1
-
-function update_history!(model, history, loss, val_data)
-    val_loss = 0.0
-    for x in val_data
-        val_loss += loss(model, x)
+function randomly_set_unconditioned(
+    labels::AbstractVector{Int}; prob_uncond::Float64=0.20
+    )
+    # with probability prob_uncond we train without class conditioning
+    if prob_uncond == 0.0
+        return embeddings
     end
-    val_loss /= length(val_data)
+    labels = copy(labels)
+    batch_size = length(labels)
+    is_not_class_cond = rand(batch_size) .<= prob_uncond
+    labels[is_not_class_cond] .= 1
+    labels
+end
+
+function update_history!(model, history, loss, val_data; prob_uncond::Float64=0.0)
+    val_loss = batched_loss(loss, model, val_data; prob_uncond=prob_uncond)
     push!(history["val_loss"], val_loss)
     @printf("val loss: %.5f", history["val_loss"][end])
     println("")
+end
+
+function batched_loss(loss, model, data::DataLoader; prob_uncond::Float64=0.0)
+    total_loss = 0.0
+    for x in data
+        if (x isa Tuple)
+            y = randomly_set_unconditioned(x[2]; prob_uncond=prob_uncond) 
+            x_splat = (x[1], y)
+        else
+            x_splat = (x,)
+        end
+        total_loss += loss(model, x_splat...)
+    end
+    total_loss /= length(data)
 end
 
 """
@@ -109,3 +132,8 @@ function batched_metric(g, f, data::DataLoader)
     end
     result / num_observations
 end
+
+count_observations(data::D) where {D<:DataLoader} = count_observations(data.data)
+count_observations(data::Tuple) = count_observations(data[1])
+count_observations(data::AbstractArray{<:Any,N}) where {N} = size(data, N)
+count_observations(data) = length(data)

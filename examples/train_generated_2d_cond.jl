@@ -5,7 +5,7 @@ using BSON, JSON
 using Printf
 
 using DenoisingDiffusion
-using DenoisingDiffusion: train!
+using DenoisingDiffusion: train!, batched_loss
 include("datasets.jl")
 include("utilities.jl")
 
@@ -17,7 +17,7 @@ to_device = cpu
 d_hid = 32
 num_epochs = 100
 num_classes = 3
-p_uncond = 0.2
+prob_uncond = 0.2
 
 ### data
 nsamples_per_class = round(Int, n_batch / num_classes)
@@ -40,7 +40,8 @@ labels_val = 1 .+ vcat(fill(1, n_val), fill(2, n_val), fill(3, n_val))
 ### model
 model = ConditionalChain(
     Parallel(
-        .+, Dense(2, d_hid),
+        .+,
+        Dense(2, d_hid),
         Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid),
             Dense(d_hid, d_hid)),
         Embedding(1 + num_classes => d_hid)
@@ -74,16 +75,11 @@ diffusion = diffusion |> to_device
 train_data = Flux.DataLoader((X, labels) |> to_device; batchsize=32, shuffle=true);
 val_data = Flux.DataLoader((X_val, labels_val) |> to_device; batchsize=32, shuffle=false);
 loss_type = Flux.mse;
-loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device, p_uncond=p_uncond)
+loss(diffusion, x, y) = p_losses(diffusion, loss_type, x, y; to_device=to_device)
 opt = Adam(0.001);
 
 println("Calculating initial loss")
-val_loss = 0.0
-for x in val_data
-    global val_loss
-    val_loss += loss(diffusion, x)
-end
-val_loss /= length(val_data)
+val_loss = batched_loss(loss, diffusion, val_data; prob_uncond=prob_uncond)
 @printf("\nval loss: %.5f\n", val_loss)
 
 mkpath(directory)
@@ -99,7 +95,7 @@ hyperparameters = Dict(
     "loss_type" => "$loss_type",
     "d_hid" => d_hid,
     "num_classes" => num_classes,
-    "p_uncond" => p_uncond,
+    "prob_uncond" => prob_uncond,
 )
 open(hyperparameters_path, "w") do f
     JSON.print(f, hyperparameters)
@@ -109,7 +105,10 @@ println("saved hyperparameters to $hyperparameters_path")
 println("training")
 start_time = time_ns()
 opt_state = Flux.setup(opt, diffusion)
-history = train!(loss, diffusion, train_data, opt_state, val_data; num_epochs=num_epochs)
+history = train!(
+    loss, diffusion, train_data, opt_state, val_data; 
+    num_epochs=num_epochs, prob_uncond=prob_uncond
+    )
 end_time = time_ns() - start_time
 println("\ndone training")
 @printf "time taken: %.2fs\n" end_time / 1e9

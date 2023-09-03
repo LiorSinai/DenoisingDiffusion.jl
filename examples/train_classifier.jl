@@ -42,12 +42,13 @@ println("")
 
 ### definitions
 accuracy(ŷ::AbstractMatrix, y::AbstractMatrix) = mean(onecold(ŷ, 0:9) .== onecold(y, 0:9))
-loss(model, xy::Tuple) = Flux.logitcrossentropy(model(xy[1]), xy[2])
+loss(model, x, y) = Flux.logitcrossentropy(model(x), y)
 
 test_acc = batched_metric(model, accuracy, test_loader)
 val_loss = 0.0
-for x in val_loader
-    val_loss += loss(model, x)
+for xy in val_loader
+    global val_loss
+    val_loss += loss(model, xy[1], xy[2])
 end
 val_loss /= length(val_loader)
 @printf("test accuracy for %d samples: %.2f%%\n", length(test_loader), test_acc * 100)
@@ -61,7 +62,7 @@ start_time = time_ns()
 opt_state = Flux.setup(Adam(0.001), model)
 history = train!(
     loss, model, train_loader, opt_state, val_loader
-    ; num_epochs=10,
+    ; num_epochs=10, prob_uncond=0.0
     )
 end_time = time_ns() - start_time
 println("done training")
@@ -72,9 +73,11 @@ output_path = joinpath(output_dir, "model.bson")
 history_path = joinpath(output_dir, "history.json")
 
 BSON.bson(output_path, Dict(:model => model))
+println("saved model to $output_path")
 open(history_path, "w") do f
     JSON.print(f, history)
 end
+println("saved history to $history_path")
 
 ### test
 test_acc = batched_metric(model, accuracy, test_loader)
@@ -89,6 +92,8 @@ canvas_loss = plot(
     ylims=(0, Inf),
 )
 plot!(canvas_loss, epochs, history["val_loss"], label="validation")
+savefig(canvas_loss, joinpath(output_dir, "history.png"))
+display(canvas_loss)
 
 println("press enter to finish")
 readline()
