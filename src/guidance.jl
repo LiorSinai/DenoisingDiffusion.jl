@@ -25,23 +25,16 @@ end
 function p_losses(
     diffusion::GaussianDiffusion,
     loss,
-    xy::Tuple{AbstractArray,AbstractVector}
-    ; to_device=cpu, p_uncond::Float64=0.20
+    x_start::AbstractArray,
+    labels::AbstractVector{Int},
+    ; to_device=cpu
     )
-    x_start = xy[1]
-    labels = xy[2]
     batch_size = size(x_start)[end]
-    if (batch_size != length(labels))
-        throw(DimensionMismatch("batch size != label length, $batch_size != $(length(labels))"))
-    end
+    @assert(batch_size == length(labels),
+        "batch size != label length, $batch_size != $(length(labels))"
+    )
     timesteps = rand(1:diffusion.num_timesteps, batch_size) |> to_device
     noise = randn(eltype(eltype(diffusion)), size(x_start)) |> to_device
-    # with probability p_uncond we train without class conditioning
-    labels = labels |> cpu
-    is_class_cond = rand(batch_size) .>= p_uncond
-    is_not_class_cond = .~is_class_cond
-    labels = (labels .* is_class_cond) + is_not_class_cond # set is_not_class_cond to 1
-    labels = labels |> to_device
     p_losses(diffusion, loss, x_start, timesteps, labels, noise)
 end
 
