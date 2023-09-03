@@ -1,7 +1,7 @@
 name = "DenoisingDiffusion"
 uuid = "32e9e46b-ad0f-4c80-b32d-4f6f824844ef"
 authors = ["Lior Sinai <lior@bbd.co.za>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
