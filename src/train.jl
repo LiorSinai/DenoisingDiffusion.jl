@@ -21,7 +21,9 @@ function train!(loss, model, data::DataLoader, opt_state, val_data;
         total_loss = 0.0
         for (idx, x) in enumerate(data)
             if (x isa Tuple)
-                y = randomly_set_unconditioned(x[2]; prob_uncond=prob_uncond) 
+                y = prob_uncond == 0.0 ? 
+                    x[2] : 
+                    randomly_set_unconditioned(x[2]; prob_uncond=prob_uncond) 
                 x_splat = (x[1], y)
             else
                 x_splat = (x,)
@@ -30,8 +32,10 @@ function train!(loss, model, data::DataLoader, opt_state, val_data;
                 loss(m, x_splat...)
             end
             total_loss += batch_loss
-            ProgressMeter.next!(progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))])
             Flux.update!(opt_state, model, grads[1])
+            ProgressMeter.next!(
+                progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))]
+            )
         end
         if save_after_epoch
             path = joinpath(save_dir, "model_epoch=$(epoch).bson")
@@ -50,9 +54,6 @@ function randomly_set_unconditioned(
     labels::AbstractVector{Int}; prob_uncond::Float64=0.20
     )
     # with probability prob_uncond we train without class conditioning
-    if prob_uncond == 0.0
-        return embeddings
-    end
     labels = copy(labels)
     batch_size = length(labels)
     is_not_class_cond = rand(batch_size) .<= prob_uncond
@@ -71,7 +72,9 @@ function batched_loss(loss, model, data::DataLoader; prob_uncond::Float64=0.0)
     total_loss = 0.0
     for x in data
         if (x isa Tuple)
-            y = randomly_set_unconditioned(x[2]; prob_uncond=prob_uncond) 
+            y = prob_uncond == 0.0 ? 
+                x[2] : 
+                randomly_set_unconditioned(x[2]; prob_uncond=prob_uncond)  
             x_splat = (x[1], y)
         else
             x_splat = (x,)
