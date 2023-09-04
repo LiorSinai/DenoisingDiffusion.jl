@@ -1,4 +1,3 @@
-
 @testset "ConvEmbed" begin
     model = ConvEmbed(1 => 8, 16; groups=8)
     x = rand(Float32, 28, 28, 1, 2)
@@ -51,10 +50,9 @@ end
 @testset "UNetConditioned" begin
     x = rand(Float32, 32, 32, 1, 3)
     t = rand(1:10, 3)
-    labels = rand(1:5, 3)
+    embeddings = rand(Float32, 8*4, 3)
 
     model = UNetConditioned(1, 8, 10; 
-        num_classes=5, 
         block_layer=ConvEmbed, 
         channel_multipliers=(1, 2)
     )
@@ -63,7 +61,10 @@ end
     output = model(x, t)
     @test size(output) == size(x)
 
-    @test_nowarn model(x, t, labels)
-    output = model(x, t)
+    @test_nowarn model(x, t, embeddings)
+    output = model(x, t, embeddings)
     @test size(output) == size(x)
+
+    embeddings_wrong = rand(Float32, 7, 3)
+    @test_throws DimensionMismatch model(x, t, embeddings_wrong)
 end
