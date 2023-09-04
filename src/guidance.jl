@@ -1,6 +1,6 @@
 """
     p_losses(diffusion, loss, x_start, timesteps, labels, noise)
-    p_losses(diffusion, loss, xy; to_device=cpu, p_uncond=0.2)
+    p_losses(diffusion, loss, x_start, labels; to_device=cpu)
 
 Sample from ``q(x_t | x_0, c)`` and return the loss for the predicted noise.
 
