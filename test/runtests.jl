@@ -6,6 +6,7 @@ using Flux
     include("models.jl")
     include("convert_fixed_nested.jl")
     include("attention.jl")
+    include("p_sample.jl")
     include("ddim.jl")
     include("split_validation.jl")
 end
