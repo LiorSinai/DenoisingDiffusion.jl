@@ -64,6 +64,6 @@ end
     @test size(output) == size(x)
 
     @test_nowarn model(x, t, labels)
-    output = model(x, t)
+    output = model(x, t, labels)
     @test size(output) == size(x)
 end
