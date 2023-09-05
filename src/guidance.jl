@@ -217,7 +217,7 @@ function classifier_free_guidance(
 
     x_double = cat(x, x, dims=ndims(x))
     timesteps_double = vcat(timesteps, timesteps)
-    unconditioned_embeddings = zeros(size(embeddings)...)
+    unconditioned_embeddings = zeros(T, size(embeddings)...)
     embeddings_both = hcat(embeddings, unconditioned_embeddings)
     noise_both = diffusion.denoise_fn(x_double, timesteps_double, embeddings_both)
 
