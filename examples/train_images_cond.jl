@@ -29,8 +29,8 @@ num_classes = 10
 
 ### data
 
-#embeddings = Embedding(num_classes, 4 * model_channels)
-embeddings = SinusoidalPositionEmbedding(num_classes, 4 * model_channels)
+embeddings = Embedding(num_classes, 4 * model_channels) # random embeddings works well
+#embeddings = SinusoidalPositionEmbedding(num_classes, 4 * model_channels)
 trainset = MNIST(Float32, :train, dir=data_directory);
 norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :));
 labels = 1 .+ trainset.targets; # 1->0, 3->1, .., 9->10
@@ -91,6 +91,7 @@ println("made directory: ", output_directory)
 hyperparameters_path = joinpath(output_directory, "hyperparameters.json")
 output_path = joinpath(output_directory, "diffusion_opt.bson")
 history_path = joinpath(output_directory, "history.json")
+embeddings_path = joinpath(output_directory, "embeddings.bson")
 
 hyperparameters = Dict(
     "dataset" => "$dataset",
@@ -112,6 +113,10 @@ open(hyperparameters_path, "w") do f
     JSON.print(f, hyperparameters)
 end
 println("saved hyperparameters to $hyperparameters_path")
+let embeddings=cpu(embeddings)
+    BSON.bson(embeddings_path, Dict(:embeddings => embeddings))
+end
+println("saved embeddings to $embeddings_path")
 
 println("Starting training")
 start_time = time_ns()
@@ -130,7 +135,7 @@ open(history_path, "w") do f
 end
 println("saved history to $history_path")
 
-let diffusion = cpu(diffusion), opt_state = cpu(opt_state)
+let diffusion = cpu(diffusion), opt_state = cpu(opt_state), embeddings=cpu(embeddings)
     # save opt_state in case want to resume training
     BSON.bson(
         output_path, 
