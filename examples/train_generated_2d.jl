@@ -42,7 +42,7 @@ diffusion = diffusion |> to_device
 train_data = Flux.DataLoader(X |> to_device; batchsize=32, shuffle=true);
 val_data = Flux.DataLoader(X_val |> to_device; batchsize=32, shuffle=false);
 loss_type = Flux.mse;
-loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device)
+loss(diffusion, x::AbstractArray) = p_losses(diffusion, loss_type, x; to_device=to_device)
 opt = Adam(0.001);
 
 println("Calculating initial loss")
