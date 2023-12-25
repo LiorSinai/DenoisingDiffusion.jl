@@ -17,7 +17,7 @@ include("load_images.jl")
 num_timesteps = 100
 seed = 2714
 dataset = :MNIST  # :MNIST or :Pokemon
-data_directory = "path\\to\\data"
+data_directory = "C:\\Users\\sinai\\Documents\\Projects\\datasets\\MNIST"
 output_directory = joinpath("outputs", "$(dataset)_" * Dates.format(now(), "yyyymmdd_HHMM"))
 model_channels = 16
 learning_rate = 0.001
@@ -68,6 +68,20 @@ diffusion = diffusion |> to_device
 train_data = Flux.DataLoader(train_x |> to_device; batchsize=batch_size, shuffle=true);
 val_data = Flux.DataLoader(val_x |> to_device; batchsize=batch_size, shuffle=false);
 loss(diffusion, x::AbstractArray) = p_losses(diffusion, loss_type, x; to_device=to_device)
+if isdefined(Main, :opt_state)
+    opt = extract_rule_from_tree(opt_state)
+    println("existing optimiser: ")
+    println("  ", opt)
+    print("transfering opt_state to device ... ")
+    opt_state = opt_state |> to_device
+    println("done")
+else
+    println("defining new optimiser")
+    opt = Adam(learning_rate)
+    println("  ", opt)
+    opt_state = Flux.setup(opt, diffusion)
+end
+
 println("Calculating initial loss")
 val_loss = 0.0
 @showprogress for x in val_data
@@ -101,19 +115,6 @@ open(hyperparameters_path, "w") do f
 end
 println("saved hyperparameters to $hyperparameters_path")
 
-if isdefined(Main, :opt_state)
-    opt = extract_rule_from_tree(opt_state)
-    println("existing optimiser: ")
-    println("  ", opt)
-    print("transfering opt_state to device ... ")
-    opt_state = opt_state |> to_device
-    println("done")
-else
-    println("defining new optimiser")
-    opt = Adam(learning_rate)
-    println("  ", opt)
-    opt_state = Flux.setup(opt, diffusion)
-end
 println("Starting training")
 start_time = time_ns()
 history = train!(loss, diffusion, train_data, opt_state, val_data;
