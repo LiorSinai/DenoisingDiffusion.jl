@@ -1,5 +1,6 @@
 using MLDatasets
 using Flux
+using CUDA, cuDNN
 using Dates
 using BSON, JSON
 using Printf

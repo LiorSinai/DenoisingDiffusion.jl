@@ -1,7 +1,7 @@
 name = "DenoisingDiffusion"
 uuid = "32e9e46b-ad0f-4c80-b32d-4f6f824844ef"
 authors = ["Lior Sinai <lior@bbd.co.za>"]
-version = "0.3.0"
+version = "0.4.0"
 
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
@@ -12,8 +12,8 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-julia = "1"
-Flux = "0.13.11"
+julia = "1.9"
+Flux = "0.14"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
