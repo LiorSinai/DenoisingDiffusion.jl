@@ -9,7 +9,6 @@ using Flux: _big_finale, _layer_show
         middle_attention=true,
         num_attention_heads=4,
         combine_embeddings=vcat,
-        num_classes=1, 
     )
 
 A convolutional autoencoder with time embeddings, class embeddings and skip connections.
@@ -26,7 +25,6 @@ Key word arguments:
 - `num_attention_heads`: number of attention heads for multi-head attention. Should evenly divide the model channels at the this point.
     That will be `model_channel*channel_multipliers[end]` in the middle.
 - `combine_embeddings`: how to combine time and class embeddings. Recommendations are `vcat` or `.+` or `.*`.
-- `num_classes`: number of class embeddings.
 
 ```
 +-----+     +-------+     +-------+     +-----+     +------+
@@ -52,22 +50,22 @@ Key word arguments:
                             +-------+     +-------+
 ```
 """
-struct UNetConditioned{E1,E2,F,C<:ConditionalChain}
-    time_embedding::E1
-    class_embedding::E2
+struct UNetConditioned{E,F,C<:ConditionalChain}
+    time_embedding::E
     combine_embeddings::F
     chain::C
     num_levels::Int
+    class_embed_dim::Int
 end
 
-Flux.@functor UNetConditioned (time_embedding, class_embedding, chain,)
+Flux.@functor UNetConditioned
+Flux.trainable(u::UNetConditioned) = (; u.time_embedding, u.chain)
 
 function UNetConditioned(
     in_channels::Int,
     model_channels::Int,
     num_timesteps::Int,
     ;
-    num_classes::Int=1,
     channel_multipliers::NTuple{N,Int}=(1, 2, 4),
     block_layer=ResBlock,
     num_blocks_per_level::Int=1,
@@ -76,8 +74,9 @@ function UNetConditioned(
     middle_attention::Bool=true,
     combine_embeddings=vcat
     ) where {N}
-    model_channels % block_groups == 0 ||
-        error("The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)")
+    @assert(model_channels % block_groups == 0,
+        "The number of block_groups ($(block_groups)) must divide the number of model_channels ($model_channels)"
+    )
 
     channels = [model_channels, map(m -> model_channels * m, channel_multipliers)...]
     in_out = collect(zip(channels[1:end-1], channels[2:end]))
@@ -88,7 +87,6 @@ function UNetConditioned(
         Dense(time_dim, time_dim, gelu),
         Dense(time_dim, time_dim)
     )
-    class_embedding = Flux.Embedding((num_classes + 1) => time_dim)
     embed_dim = (combine_embeddings == vcat) ? 2 * time_dim : time_dim
 
     in_ch, out_ch = in_out[1]
@@ -118,10 +116,10 @@ function UNetConditioned(
         final=Conv((3, 3), model_channels => in_channels, stride=(1, 1), pad=(1, 1))
     )
 
-    UNetConditioned(time_embed, class_embedding, combine_embeddings, chain, length(channel_multipliers) + 1)
+    UNetConditioned(time_embed, combine_embeddings, chain, length(channel_multipliers) + 1, time_dim)
 end
 
-function (u::UNetConditioned)(x::AbstractArray, timesteps::AbstractVector{Int}, labels::AbstractVector{Int})
+function (u::UNetConditioned)(x::AbstractArray, timesteps::AbstractVector{Int}, embeddings::AbstractMatrix)
     downsize_factor = 2^(u.num_levels - 2)
     if (size(x, 1) % downsize_factor != 0) || (size(x, 2) % downsize_factor != 0)
         throw(DimensionMismatch(
@@ -129,16 +127,16 @@ function (u::UNetConditioned)(x::AbstractArray, timesteps::AbstractVector{Int}, 
         )
     end
     time_emb = u.time_embedding(timesteps)
-    class_emb = u.class_embedding(labels)
-    emb = u.combine_embeddings(time_emb, class_emb)
+    emb = u.combine_embeddings(time_emb, embeddings)
     h = u.chain(x, emb)
     h
 end
 
 function (u::UNetConditioned)(x::AbstractArray, timesteps::AbstractVector{Int})
     batch_size = length(timesteps)
-    labels = fill(1, batch_size)
-    u(x, timesteps, labels)
+    T = eltype(x)
+    embeddings = zeros(T, u.class_embed_dim, batch_size)
+    u(x, timesteps, embeddings)
 end
 
 ## show
@@ -146,7 +144,6 @@ end
 function Base.show(io::IO, u::UNetConditioned)
     print(io, "UNetConditioned(")
     print(io, "time_embedding=", u.time_embedding)
-    print(io, "class_embedding=", u.class_embedding)
     print(io, "combine_embeddings=", u.combine_embeddings)
     print(io, ", chain=", u.chain)
     print(io, ")")
@@ -154,7 +151,7 @@ end
 
 function _big_show(io::IO, u::UNetConditioned, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNetConditioned(")
-    for layer in [:time_embedding, :class_embedding, :combine_embeddings, :chain]
+    for layer in [:time_embedding, :combine_embeddings, :chain]
         _big_show(io, getproperty(u, layer), indent + 2, layer)
     end
     if indent == 0

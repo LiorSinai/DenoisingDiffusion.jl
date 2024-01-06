@@ -30,11 +30,15 @@ num_classes = 10
 
 ### data
 
+embeddings = Embedding(num_classes, 4 * model_channels) # random embeddings works well
+#embeddings = SinusoidalPositionEmbedding(num_classes, 4 * model_channels)
 trainset = MNIST(Float32, :train, dir=data_directory);
 norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :));
-labels = 2 .+ trainset.targets; # 1->default, 2->0, 3->1, ..., 9->11
-train_x, val_x = split_validation(MersenneTwister(seed), norm_data, labels);
+labels = 1 .+ trainset.targets; # 1->0, 3->1, .., 9->10
+train_embeddings = embeddings.weight[:, labels]
+train_x, val_x = split_validation(MersenneTwister(seed), norm_data, train_embeddings);
 
+println("emeddings:       ", size(embeddings.weight))
 println("train data:      ", size(train_x[1]), "--", size(train_x[2]))
 println("validation data: ", size(val_x[1]), "--", size(val_x[2]))
 
@@ -43,7 +47,6 @@ println("validation data: ", size(val_x[1]), "--", size(val_x[2]))
 in_channels = size(train_x[1], 3)
 data_shape = size(train_x[1])[1:3]
 model = UNetConditioned(in_channels, model_channels, num_timesteps;
-    num_classes=num_classes,
     block_layer=ResBlock,
     num_blocks_per_level=1,
     block_groups=8,
@@ -89,6 +92,7 @@ println("made directory: ", output_directory)
 hyperparameters_path = joinpath(output_directory, "hyperparameters.json")
 output_path = joinpath(output_directory, "diffusion_opt.bson")
 history_path = joinpath(output_directory, "history.json")
+embeddings_path = joinpath(output_directory, "embeddings.bson")
 
 hyperparameters = Dict(
     "dataset" => "$dataset",
@@ -110,6 +114,10 @@ open(hyperparameters_path, "w") do f
     JSON.print(f, hyperparameters)
 end
 println("saved hyperparameters to $hyperparameters_path")
+let embeddings=cpu(embeddings)
+    BSON.bson(embeddings_path, Dict(:embeddings => embeddings))
+end
+println("saved embeddings to $embeddings_path")
 
 println("Starting training")
 start_time = time_ns()
@@ -128,13 +136,14 @@ open(history_path, "w") do f
 end
 println("saved history to $history_path")
 
-let diffusion = cpu(diffusion), opt_state = cpu(opt_state)
+let diffusion = cpu(diffusion), opt_state = cpu(opt_state), embeddings=cpu(embeddings)
     # save opt_state in case want to resume training
     BSON.bson(
         output_path, 
         Dict(
             :diffusion => diffusion, 
-            :opt_state => opt_state
+            :opt_state => opt_state,
+            :embeddings => embeddings
         )
     )
 end
@@ -153,18 +162,19 @@ plot!(canvas_train, 1:length(history["val_loss"]), history["val_loss"], label="v
 savefig(canvas_train, joinpath(output_directory, "history.png"))
 display(canvas_train)
 
-all_classes = collect(1:num_classes)
+all_classes = to_device(embeddings.weight)
 X0_all = p_sample_loop(diffusion, all_classes; guidance_scale=2.0f0, to_device=to_device);
 X0_all = X0_all |> cpu;
 imgs_all = convert2image(trainset, X0_all[:, :, 1, :]);
-canvas_samples = plot([plot(imgs_all[:, :, i], title="digit=$(i-2)") for i in 1:num_classes]..., ticks=nothing)
+canvas_samples = plot([plot(imgs_all[:, :, i], title="digit=$(i-1)") for i in 1:num_classes]..., ticks=nothing)
 savefig(canvas_samples, joinpath(output_directory, "samples.png"))
 display(canvas_samples)
 
 for label in 1:num_classes
     println("press enter for next label")
     readline()
-    X0 = p_sample_loop(diffusion, 12, label; guidance_scale=2.0f0, to_device=to_device)
+    class_embedding = repeat(embeddings.weight[:, label], 1, 12) |> to_device
+    X0 = p_sample_loop(diffusion, class_embedding; guidance_scale=2.0f0, to_device=to_device)
     X0 = X0 |> cpu
     imgs = convert2image(trainset, X0[:, :, 1, :])
     canvas = plot([plot(imgs[:, :, i]) for i in 1:12]..., plot_title="label=$label", ticks=nothing)

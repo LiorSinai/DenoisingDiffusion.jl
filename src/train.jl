@@ -61,6 +61,18 @@ function randomly_set_unconditioned(
     labels
 end
 
+function randomly_set_unconditioned(
+    embeddings::AbstractMatrix; prob_uncond::Float64=0.20
+    )
+    # with probability prob_uncond we train without class conditioning
+    embeddings = copy(embeddings)
+    batch_size = size(embeddings, 2)
+    is_not_class_cond = rand(batch_size) .<= prob_uncond
+    T = eltype(embeddings)
+    embeddings[:, is_not_class_cond] .= zero(T)
+    embeddings 
+end
+
 function update_history!(model, history, loss, val_data; prob_uncond::Float64=0.0)
     val_loss = batched_loss(loss, model, val_data; prob_uncond=prob_uncond)
     push!(history["val_loss"], val_loss)

@@ -13,7 +13,7 @@ function ddim_sample(
     x::AbstractArray,
     timesteps::AbstractVector{Int},
     timesteps_next::AbstractVector{Int},
-    labels::AbstractVector{Int},
+    labels_or_embeddings::AbstractVecOrMat,
     noise::AbstractArray
     ;
     clip_denoised::Bool=true,
@@ -22,10 +22,10 @@ function ddim_sample(
     guidance_scale::AbstractFloat=1.0f0
     )
     if guidance_scale == 1.0f0
-        x_start, pred_noise = denoise(diffusion, x, timesteps, labels)
+        x_start, pred_noise = denoise(diffusion, x, timesteps, labels_or_embeddings)
     else
         x_start, pred_noise = classifier_free_guidance(
-            diffusion, x, timesteps, labels; guidance_scale=guidance_scale
+            diffusion, x, timesteps, labels_or_embeddings; guidance_scale=guidance_scale
         )
     end
     if clip_denoised
@@ -61,7 +61,7 @@ function ddim_sample_loop(
     diffusion::GaussianDiffusion,
     sampling_timesteps::Int,
     shape::NTuple,
-    labels::AbstractVector{Int}
+    labels_or_embeddings::AbstractVecOrMat
     ;
     η::AbstractFloat=1.0f0,
     clip_denoised::Bool=true,
@@ -82,7 +82,7 @@ function ddim_sample_loop(
         timesteps = fill(t, shape[end]) |> to_device
         timesteps_next = fill(t_next, shape[end]) |> to_device
         noise = randn(T, size(x)) |> to_device
-        x, x_start = ddim_sample(diffusion, x, timesteps, timesteps_next, labels, noise;
+        x, x_start = ddim_sample(diffusion, x, timesteps, timesteps_next, labels_or_embeddings, noise;
             clip_denoised=clip_denoised, add_noise=(t_next != 1), η=η, guidance_scale=guidance_scale
         )
     end
@@ -93,6 +93,12 @@ function ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps::Int,
     batch_size = length(labels)
     shape = (diffusion.data_shape..., batch_size)
     ddim_sample_loop(diffusion, sampling_timesteps, shape, labels; options...)
+end
+
+function ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps::Int, embeddings::AbstractMatrix; options...)
+    batch_size = size(embeddings, 2)
+    shape = (diffusion.data_shape..., batch_size)
+    ddim_sample_loop(diffusion, sampling_timesteps, shape, embeddings; options...)
 end
 
 function ddim_sample_loop(diffusion::GaussianDiffusion, sampling_timesteps::Int, batch_size::Int, label::Int; options...)
